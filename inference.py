@@ -229,11 +229,14 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
     return {"action_type": "DIAGNOSE", "target_node_id": "UNKNOWN"}
 
 
-# ── Episode runner ────────────────────────────────────────────────────
+# Fixed seeds for reproducible baseline runs
+TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44}
+
 
 def run_episode(task: str) -> dict:
     """Run one full episode. Returns trajectory summary for grading."""
-    obs = _post("/reset", {"task": task})
+    seed = TASK_SEEDS.get(task, 42)
+    obs = _post("/reset", {"task": task, "seed": seed})
 
     history = []
     step_num = 0
@@ -292,8 +295,7 @@ def run_episode(task: str) -> dict:
 # ── Structured logging (mandatory hackathon format) ───────────────────
 
 def log_step(task, step_num, action, reward, info, obs):
-    print(json.dumps({
-        "log_type": "STEP",
+    payload = {
         "task": task,
         "step": step_num,
         "action_type": action.get("action_type"),
@@ -303,7 +305,8 @@ def log_step(task, step_num, action, reward, info, obs):
         "steps_remaining": obs.get("steps_remaining"),
         "false_positives": obs.get("false_positives_so_far", 0),
         "info": info,
-    }), flush=True)
+    }
+    print(f"[STEP] {json.dumps(payload)}", flush=True)
 
 
 # ── Main ──────────────────────────────────────────────────────────────
@@ -312,19 +315,17 @@ def main():
     tasks = ["easy", "medium", "hard"]
     results = []
 
-    print(json.dumps({
-        "log_type": "START",
-        "tasks": tasks,
-        "model": MODEL_NAME,
-        "server": SERVER_URL,
-    }), flush=True)
+    print(f"[START] {json.dumps({
+        'tasks': tasks,
+        'model': MODEL_NAME,
+        'server': SERVER_URL,
+    })}", flush=True)
 
     for task in tasks:
-        print(json.dumps({
-            "log_type": "STEP",
-            "event": "episode_start",
-            "task": task,
-        }), flush=True)
+        print(f"[STEP] {json.dumps({
+            'event': 'episode_start',
+            'task': task,
+        })}", flush=True)
 
         trajectory = run_episode(task)
 
@@ -336,26 +337,24 @@ def main():
         trajectory["breakdown"] = breakdown
         results.append(trajectory)
 
-        print(json.dumps({
-            "log_type": "STEP",
-            "event": "episode_end",
-            "task": task,
-            "score": score,
-            "steps_taken": trajectory["steps_taken"],
-            "false_positives": trajectory["false_positives"],
-            "root_cause_id": trajectory["root_cause_id"],
-            "root_cause_layer": trajectory.get("root_cause_layer"),
-            "breakdown": breakdown,
-        }), flush=True)
+        print(f"[STEP] {json.dumps({
+            'event': 'episode_end',
+            'task': task,
+            'score': score,
+            'steps_taken': trajectory['steps_taken'],
+            'false_positives': trajectory['false_positives'],
+            'root_cause_id': trajectory['root_cause_id'],
+            'root_cause_layer': trajectory.get('root_cause_layer'),
+            'breakdown': breakdown,
+        })}", flush=True)
 
     avg_score = round(sum(r["score"] for r in results) / len(results), 4)
 
-    print(json.dumps({
-        "log_type": "END",
-        "results": results,
-        "average_score": avg_score,
-        "model": MODEL_NAME,
-    }), flush=True)
+    print(f"[END] {json.dumps({
+        'results': results,
+        'average_score': avg_score,
+        'model': MODEL_NAME,
+    })}", flush=True)
 
     return avg_score
 

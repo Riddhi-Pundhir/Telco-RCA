@@ -1,6 +1,13 @@
 """
 Telco-RCA FastAPI server — implements the OpenEnv HTTP interface.
-Endpoints: POST /reset, POST /step, GET /state, GET /tasks, GET /health
+
+Endpoints:
+    POST /reset    — Start a new episode for a given task
+    POST /step     — Execute an agent action
+    GET  /state    — Internal state for debugging/grading
+    GET  /tasks    — List all available tasks
+    GET  /health   — Liveness check
+    POST /grade    — Score a complete trajectory
 """
 
 from fastapi import FastAPI, HTTPException
@@ -9,11 +16,15 @@ from pydantic import BaseModel
 
 from .environment import TelcoRCAEnvironment
 from .models import AgentAction, TASK_CONFIGS
-from .graders import grade_easy, grade_medium, grade_hard
+from .graders import grade_easy, grade_medium, grade_hard, grade_episode
 
 app = FastAPI(
     title="Telco-RCA OpenEnv",
-    description="5G Network Root Cause Analysis — RL environment for fault diagnosis agents",
+    description=(
+        "5G Network Root Cause Analysis — RL environment for fault diagnosis agents. "
+        "Simulate cascading equipment failures across a layered telecom knowledge graph "
+        "and train agents to identify the true root cause with minimum false positives."
+    ),
     version="1.0.0",
 )
 
@@ -24,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# One environment instance per session (stateful server)
+# One environment instance per task (stateful server)
 _envs: dict[str, TelcoRCAEnvironment] = {}
 
 
@@ -40,6 +51,7 @@ def _get_env(task: str) -> TelcoRCAEnvironment:
 
 class ResetRequest(BaseModel):
     task: str = "easy"
+    seed: int | None = None
 
 class StepRequest(BaseModel):
     task: str = "easy"
@@ -56,7 +68,12 @@ class GradeRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "environment": "telco-rca", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "environment": "telco-rca",
+        "version": "1.0.0",
+        "tasks_available": list(TASK_CONFIGS.keys()),
+    }
 
 
 @app.get("/tasks")
@@ -68,6 +85,9 @@ def list_tasks():
                 "description": cfg.description,
                 "num_nodes": cfg.num_nodes,
                 "max_steps": cfg.max_steps,
+                "failure_layers": cfg.failure_layers,
+                "noise_ratio": cfg.noise_ratio,
+                "num_regions": cfg.num_regions,
             }
             for cfg in TASK_CONFIGS.values()
         ]
@@ -79,7 +99,7 @@ def reset(req: ResetRequest):
     if req.task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{req.task}'. Valid: {list(TASK_CONFIGS)}")
     env = _get_env(req.task)
-    obs = env.reset()
+    obs = env.reset(seed=req.seed)
     return obs.model_dump()
 
 
@@ -88,7 +108,10 @@ def step(req: StepRequest):
     if req.task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{req.task}'.")
     env = _get_env(req.task)
-    result = env.step(req.action)
+    try:
+        result = env.step(req.action)
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))
     return result.model_dump()
 
 
@@ -101,8 +124,21 @@ def state(task: str = "easy"):
 
 @app.post("/grade")
 def grade(req: GradeRequest):
-    graders = {"easy": grade_easy, "medium": grade_medium, "hard": grade_hard}
-    if req.task not in graders:
+    if req.task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{req.task}'.")
-    score = graders[req.task](req.trajectory)
-    return {"task": req.task, "score": score}
+
+    # Use the detailed grader
+    result = grade_episode(
+        task_name=req.task,
+        root_cause_fixed=req.trajectory.get("root_cause_fixed", False),
+        steps_taken=req.trajectory.get("steps_taken", TASK_CONFIGS[req.task].max_steps),
+        false_positives=req.trajectory.get("false_positives", 0),
+        elapsed_seconds=req.trajectory.get("elapsed_seconds", 300),
+        correct_diagnosis=req.trajectory.get("correct_diagnosis", False),
+    )
+    return {
+        "task": req.task,
+        "score": result["score"],
+        "reason": result["reason"],
+        "breakdown": result["breakdown"],
+    }

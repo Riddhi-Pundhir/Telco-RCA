@@ -1,0 +1,274 @@
+:root {
+  --bg-base: #0f1219;
+  --bg-panel: rgba(26, 32, 44, 0.7);
+  --bg-card: rgba(45, 55, 72, 0.5);
+  
+  --text-main: #e2e8f0;
+  --text-muted: #a0aec0;
+  
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  
+  --accent-cyan: #06b6d4;
+  --status-up: #10b981;
+  --status-degraded: #f59e0b;
+  --status-failed: #ef4444;
+  
+  --border: rgba(255, 255, 255, 0.1);
+  --glass: blur(12px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(6, 182, 212, 0.05), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.05), transparent 25%);
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+
+/* ── HEADER ── */
+.topbar {
+  height: 60px;
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand h1 { font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 8px;}
+.brand-icon { color: var(--accent-cyan); }
+.badge {
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--accent-cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.select-wrapper { position: relative; }
+select {
+  appearance: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: white;
+  padding: 8px 36px 8px 16px;
+  border-radius: 6px;
+  font-family: 'Inter';
+  outline: none;
+}
+.select-wrapper svg {
+  position: absolute; right: 10px; top: 10px; width: 16px; height: 16px;
+  pointer-events: none; color: var(--text-muted);
+}
+
+.btn {
+  background: var(--bg-card);
+  color: white;
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter';
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn:hover { background: rgba(255,255,255,0.1); }
+.btn svg { width: 16px; height: 16px; }
+
+.btn-primary { background: var(--primary); border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+.btn-danger { color: #fca5a5; border-color: rgba(239, 68, 68, 0.5); }
+.btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
+.btn-warning { color: #fcd34d; border-color: rgba(245, 158, 11, 0.5); }
+.btn-warning:hover { background: rgba(245, 158, 11, 0.1); }
+
+.status-panel { display: flex; gap: 24px; font-weight: 500; font-size: 0.9em; }
+.status-pill { display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.dot.up { background: var(--status-up); box-shadow: 0 0 8px var(--status-up); }
+.dot.degraded { background: var(--status-degraded); box-shadow: 0 0 8px var(--status-degraded); animation: pulse 2s infinite; }
+.dot.failed { background: var(--status-failed); box-shadow: 0 0 8px var(--status-failed); animation: pulse-fast 1s infinite; }
+
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+@keyframes pulse-fast { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+/* ── LAYOUT ── */
+.dashboard {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 2fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: var(--glass);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.panel-header {
+  height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0,0,0,0.2);
+}
+.panel-header h2 { font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.panel-header svg { width: 16px; height: 16px; color: var(--accent-cyan);}
+
+/* ── GRAPH ── */
+.graph-panel { grid-row: 1 / 2; grid-column: 1 / 2; }
+.graph-container { flex: 1; position: relative; overflow: hidden; background: rgba(0,0,0,0.3); }
+
+/* SVG elements */
+.link { stroke: rgba(255,255,255,0.1); stroke-width: 1.5px; }
+.node circle { stroke: #fff; stroke-width: 1px; cursor: pointer; transition: r 0.2s; }
+.node:hover circle { stroke-width: 2px; }
+.node text { fill: var(--text-muted); font-family: 'JetBrains Mono'; font-size: 10px; pointer-events: none; }
+.node.selected circle { stroke: var(--primary); stroke-width: 3px; r: 12; }
+
+/* ── ALARMS ── */
+.alarms-panel { grid-row: 1 / 3; grid-column: 2 / 3; }
+.filters { padding: 8px 16px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+.filter-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; }
+.filter-btn.active { background: var(--bg-card); color: white; }
+
+.alarms-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.alarm-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.1s;
+}
+.alarm-card:hover { transform: translateX(2px); background: rgba(255,255,255,0.05); }
+.alarm-card.CRITICAL { border-left-color: var(--status-failed); }
+.alarm-card.MAJOR, .alarm-card.WARNING { border-left-color: var(--status-degraded); }
+.alarm-id { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.alarm-layer { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+.alarm-msg { font-size: 0.8rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── ACTION CONSOLE ── */
+.action-panel { grid-row: 2 / 3; grid-column: 1 / 2; padding-bottom: 16px; }
+.target-display { color: var(--accent-cyan); font-size: 0.9rem; }
+.action-grid { display: flex; gap: 12px; padding: 16px 16px 0 16px; }
+.mt-2 { padding-top: 12px; }
+
+.console-output {
+  margin: 16px;
+  flex: 1;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-y: auto;
+  color: #a7f3d0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.console-line.error { color: #fca5a5; }
+.console-line.info { color: #93c5fd; }
+.console-line.action { color: #fde047; }
+
+/* ── METRICS ── */
+.metrics-panel { /* Right below action? Actually, let's slot it into action panel or reshape grid */ }
+/* Wait, I designed a 2x2 grid where alarms takes right col, so action and metrics need to share left col row 2?
+   Let's make grid 3 columns:
+   Left(2fr) Right(1fr). Then inside Left, Row1=Graph, Row2=Action+Metrics.
+   Let's redesign dashboard layout below */
+
+.dashboard { grid-template-columns: 2fr 1fr; grid-template-rows: auto 1fr; }
+.graph-panel { grid-row: 1 / 2; grid-column: 1 / 2; height: 50vh; }
+.alarms-panel { grid-row: 1 / 3; grid-column: 2 / 3; }
+
+.bottom-split {
+  grid-row: 2 / 3; grid-column: 1 / 2;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+
+.action-panel { grid-row: unset; grid-column: unset; }
+.metrics-panel { grid-row: unset; grid-column: unset; }
+
+.metrics-grid { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+.metric-val { font-size: 2rem; font-weight: 700; color: white; font-family: 'JetBrains Mono'; }
+.metric-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+.progress-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--primary); transition: width 0.3s; }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  opacity: 1; transition: opacity 0.3s;
+}
+.modal-overlay.hidden { opacity: 0; pointer-events: none; }
+.modal {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 400px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.modal-header { padding: 20px; text-align: center; border-bottom: 1px solid var(--border); background: rgba(16, 185, 129, 0.1); }
+.modal-header h2 { color: var(--status-up); }
+.modal-body { padding: 24px; }
+.score-display { text-align: center; margin-bottom: 24px; }
+.score-val { font-size: 3rem; font-weight: 700; color: white; display: block; }
+.score-label { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; }
+.breakdown-table { width: 100%; border-collapse: collapse; }
+.breakdown-table td { padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+.breakdown-table td:last-child { text-align: right; color: white; font-weight: 500; }
+.modal-footer { padding: 16px; border-top: 1px solid var(--border); display: flex; justify-content: stretch; }
+.modal-footer .btn { flex: 1; justify-content: center; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }

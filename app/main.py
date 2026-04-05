@@ -12,7 +12,10 @@ Endpoints:
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+import os
 
 from .environment import TelcoRCAEnvironment
 from .models import AgentAction, TASK_CONFIGS
@@ -34,6 +37,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Route for the main UI
+@app.get("/")
+def serve_ui():
+    static_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    if os.path.exists(static_path):
+        return FileResponse(static_path)
+    return {"error": "UI not built yet."}
+
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 # One environment instance per task (stateful server)
 _envs: dict[str, TelcoRCAEnvironment] = {}
@@ -142,3 +155,9 @@ def grade(req: GradeRequest):
         "reason": result["reason"],
         "breakdown": result["breakdown"],
     }
+
+
+def start():
+    """Entry point for `openenv serve` / pyproject.toml scripts."""
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=7860)

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telco-RCA Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="topbar">
+    <div class="brand">
+      <i data-lucide="radio-tower" class="brand-icon"></i>
+      <h1>Telco-RCA <span class="badge">NOC OPS</span></h1>
+    </div>
+    
+    <div class="controls">
+      <div class="select-wrapper">
+        <select id="taskSelect">
+          <option value="easy">Easy (20 nodes)</option>
+          <option value="medium" selected>Medium (100 nodes)</option>
+          <option value="hard">Hard (500 nodes)</option>
+        </select>
+        <i data-lucide="chevron-down"></i>
+      </div>
+      <button id="btnReset" class="btn btn-primary">
+        <i data-lucide="power"></i> Initialize Task
+      </button>
+    </div>
+
+    <div class="status-panel">
+      <div class="status-pill id="statusBadge"><span class="dot"></span> <span id="statusText">IDLE</span></div>
+      <div class="timer"><i data-lucide="clock"></i> <span id="timeElapsed">00:00</span></div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="dashboard">
+    <!-- Center: Network Graph -->
+    <section class="panel graph-panel">
+      <div class="panel-header">
+        <h2><i data-lucide="network"></i> Network Topology</h2>
+        <div class="graph-legend">
+          <span class="legend-item"><span class="dot up"></span> UP</span>
+          <span class="legend-item"><span class="dot degraded"></span> DEGRADED</span>
+          <span class="legend-item"><span class="dot failed"></span> FAILED</span>
+        </div>
+      </div>
+      <div id="graphContainer" class="graph-container">
+        <!-- D3 Graph renders here -->
+        <div class="empty-state">Initialize a task to load network topology</div>
+      </div>
+    </section>
+
+    <!-- Right: Alarms -->
+    <section class="panel alarms-panel">
+      <div class="panel-header">
+        <h2><i data-lucide="alert-triangle"></i> Live Alarms</h2>
+        <span class="badge" id="alarmCount">0</span>
+      </div>
+      
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="critical">Critical</button>
+      </div>
+
+      <div class="alarms-list" id="alarmsList">
+        <div class="empty-state">No active alarms</div>
+      </div>
+    </section>
+
+    <div class="bottom-split">
+      <!-- Bottom Left: Action Console -->
+      <section class="panel action-panel">
+        <div class="panel-header">
+          <h2><i data-lucide="terminal"></i> Action Console</h2>
+          <div class="target-display">
+            Target: <span id="currentTarget" class="mono">NONE</span>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <button class="btn btn-outline" onclick="selectAction('CHECK_LOGS')"><i data-lucide="file-text"></i> CHECK_LOGS</button>
+          <button class="btn btn-outline" onclick="selectAction('CHECK_VOLTAGE')"><i data-lucide="zap"></i> CHECK_VOLTAGE</button>
+          <button class="btn btn-outline" onclick="selectAction('TRACE_PATH')"><i data-lucide="route"></i> TRACE_PATH</button>
+        </div>
+        
+        <div class="action-grid mt-2">
+          <button class="btn btn-danger" onclick="selectAction('RESTART')"><i data-lucide="rotate-ccw"></i> RESTART</button>
+          <button class="btn btn-warning" onclick="selectAction('DIAGNOSE')"><i data-lucide="check-circle"></i> DIAGNOSE</button>
+        </div>
+
+        <div class="console-output mono" id="consoleOutput">
+          > System ready. Select a node to begin diagnostics.
+        </div>
+      </section>
+
+      <!-- Bottom Right: Metrics -->
+      <section class="panel metrics-panel">
+        <div class="panel-header">
+          <h2><i data-lucide="bar-chart-2"></i> Mission Metrics</h2>
+        </div>
+        
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-val" id="valSteps">0 / --</div>
+            <div class="metric-label">Steps Used</div>
+            <div class="progress-bar"><div class="progress-fill" id="pbSteps" style="width: 0%"></div></div>
+          </div>
+          
+          <div class="metric-card">
+            <div class="metric-val" id="valFP">0</div>
+            <div class="metric-label">False Positives</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-val" id="valReward">0.00</div>
+            <div class="metric-label">Cumulative Reward</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Episode End Modal -->
+  <div id="endModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Mission Accomplished</h2>
+      </div>
+      <div class="modal-body">
+        <div class="score-display">
+          <span class="score-val" id="finalScore">0.00</span>
+          <span class="score-label">Final Score</span>
+        </div>
+        <table class="breakdown-table">
+          <tr><td>Root Cause</td><td id="tdRootCause" class="mono">--</td></tr>
+          <tr><td>F1-Score</td><td id="tdF1">--</td></tr>
+          <tr><td>Efficiency</td><td id="tdEfficiency">--</td></tr>
+          <tr><td>Speed Bonus</td><td id="tdSpeed">--</td></tr>
+          <tr><td>FP Penalty</td><td id="tdFP">--</td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal()">Close & View Graph</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

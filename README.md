@@ -1,9 +1,15 @@
+---
+title: Telco-RCA
+emoji: 📡
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
 <p align="center">
   <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/radio-tower.svg" width="80" alt="Telco-RCA Logo">
 </p>
-
-<h1 align="center">Telco-RCA</h1>
-
+<h1 align="center">Telco-RCA</h1>                  
 <p align="center">
   <strong>5G Network Root Cause Analysis Environment</strong><br>
   <em>OpenEnv Hackathon Submission · Team Codyy AR · April 2026</em>
@@ -49,14 +55,7 @@ graph TD
 ```
 
 ---
----
-title: Telco-RCA
-emoji: 📡
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
----
+
 ## 🎮 Evaluation Tasks
 
 Three rigorously tuned difficulty tiers to test frontier model graph-reasoning:

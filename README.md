@@ -1,6 +1,16 @@
+---
+title: Telco-RCA
+emoji: 📡
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
 # 🔴 Telco-RCA — 5G Network Root Cause Analysis Environment
 
 > **OpenEnv submission** · Team Codyy AR · April 2026 Hackathon
+> 
+> 🔗 **Live Dashboard (Hugging Face Space):** [https://huggingface.co/spaces/ayushman098/telco-rca](https://huggingface.co/spaces/ayushman098/telco-rca)
 
 An RL environment where an AI agent must diagnose cascading equipment failures in a 5G network — finding the one broken node responsible for hundreds of downstream alarms, as fast as possible, with minimum false positives.
 
@@ -289,6 +299,20 @@ SERVER_URL     Environment server URL (default: http://localhost:7860)
 - **State Tracking** (4 tests): step counting, node tracking
 - **Models** (4 tests): config validation, action schemas
 - **Integration** (3 tests): full episode simulations for easy/medium/hard
+
+---
+
+## 🏆 Hackathon Rubric Mapping
+
+For judges evaluating this submission, here is exactly where to find the evidence for each rubric criterion:
+
+| Criterion | Evidence & Location |
+|-----------|---------------------|
+| **1. Functionality & Conformity** (Does it work? Does it match OpenEnv spec?) | ✅ Passes `openenv validate` (`artifacts/openenv_validate.txt`) <br> ✅ 6/6 exact OpenEnv API endpoints implemented in `app/main.py`. <br> ✅ State and Grading (F1/MTTR) cleanly decoupled. |
+| **2. Code Quality & Testing** (Is it tested and documented?) | ✅ **47/47 PyTest coverage** running in 0.2s (`artifacts/pytest.txt`). <br> ✅ Extensive docstrings, type hinting (Pydantic v2 in `app/models.py`). <br> ✅ Clear architectural separation (server, engine, graders). |
+| **3. Reproducibility** (Can baseline runs be reproduced?) | ✅ Strict seeding in `app/environment.py`. <br> ✅ Two identical automated runs produced the exact same trajectories/actions for all 3 tasks (`artifacts/reproducibility_test.txt`). |
+| **4. Cloud & Docker Deployment** (Is it accessible?) | ✅ Fully containerised with `Dockerfile` and `server/app.py`. <br> ✅ Local Docker E2E smoke tests passed (`artifacts/docker_smoke.txt`). <br> ✅ **Live on Hugging Face Spaces:** [https://huggingface.co/spaces/ayushman098/telco-rca](https://huggingface.co/spaces/ayushman098/telco-rca). |
+| **5. Innovation & Complexity** (Is the environment non-trivial?) | ✅ Massive 500-node graph scaling out across 5 regions. <br> ✅ Adversarial noise (40% spurious alarms testing robustness). <br> ✅ Novel *MTTR vs FP penalty* trade-off formulation. |
 
 ---
 

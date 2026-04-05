@@ -10,7 +10,7 @@ app_port: 7860
 
 > **OpenEnv submission** · Team Codyy AR · April 2026 Hackathon
 > 
-> 🔗 **Live Dashboard (Hugging Face Space):** [https://huggingface.co/spaces/ayushman098/telco-rca](https://huggingface.co/spaces/ayushman098/telco-rca)
+> 🔗 **Live Dashboard:** [https://ayushman098-telco-rca.hf.space/](https://ayushman098-telco-rca.hf.space/)
 
 An RL environment where an AI agent must diagnose cascading equipment failures in a 5G network — finding the one broken node responsible for hundreds of downstream alarms, as fast as possible, with minimum false positives.
 

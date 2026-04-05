@@ -1,0 +1,77 @@
+name: telco-rca
+version: "1.0.0"
+description: >
+  5G Network Root Cause Analysis environment. An alarm storm has hit the network —
+  hundreds of downstream nodes are screaming. One piece of equipment is the real culprit.
+  The agent must trace the cascade, isolate the root cause, and fix it with minimum
+  false positives and maximum speed.
+
+author: "Team Codyy AR"
+license: MIT
+
+tasks:
+  - name: easy
+    description: "Single power unit failure in a 20-node network. ~5–10 alarms, no noise."
+    max_steps: 15
+    difficulty: easy
+
+  - name: medium
+    description: "Core switch/power failure in 100-node network. Up to 50 alarms, 20% noise."
+    max_steps: 30
+    difficulty: medium
+
+  - name: hard
+    description: "Cascading failure in 500-node 5G network. 300+ alarms, 40% noise. All layers at risk."
+    max_steps: 50
+    difficulty: hard
+
+action_space:
+  type: discrete_typed
+  actions:
+    - name: CHECK_LOGS
+      description: Read error logs for a specific node
+    - name: CHECK_VOLTAGE
+      description: Measure voltage output of a node (power diagnostic)
+    - name: RESTART
+      description: Restart a node — fixes network if root cause; false positive penalty if not
+    - name: DIAGNOSE
+      description: Declare a node as root cause without restarting (safer but lower reward)
+
+observation_space:
+  type: structured
+  fields:
+    - name: active_alarms
+      type: "list[Alarm]"
+      description: "Active alarms (capped at 50 in observation; full count in total_alarm_count)"
+    - name: total_alarm_count
+      type: int
+    - name: steps_remaining
+      type: int
+    - name: false_positives_so_far
+      type: int
+    - name: checked_nodes
+      type: "list[str]"
+    - name: episode_done
+      type: bool
+    - name: task_description
+      type: str
+
+reward:
+  range: [-inf, ~2.0]
+  description: >
+    Reward = efficiency_multiplier + speed_bonus - false_positive_penalty.
+    Maximum achievable ~2.0 (instant correct fix, no false positives).
+    Each wrong RESTART costs -0.3 and adds to the false_positive_penalty in the final grade.
+    Each step costs -0.01.
+
+endpoints:
+  reset: "POST /reset"
+  step:  "POST /step"
+  state: "GET /state"
+  tasks: "GET /tasks"
+  grade: "POST /grade"
+  health: "GET /health"
+
+docker:
+  port: 7860
+  base_image: python:3.11-slim

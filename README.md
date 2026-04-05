@@ -1,12 +1,3 @@
----
-title: Telco-RCA
-emoji: 📡
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
----
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/radio-tower.svg" width="80" alt="Telco-RCA Logo">
 </p>
@@ -58,7 +49,14 @@ graph TD
 ```
 
 ---
-
+---
+title: Telco-RCA
+emoji: 📡
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
 ## 🎮 Evaluation Tasks
 
 Three rigorously tuned difficulty tiers to test frontier model graph-reasoning:

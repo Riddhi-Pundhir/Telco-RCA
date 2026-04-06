@@ -1,0 +1,244 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #f3e8df;
+  background: #452829;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(232, 209, 197, 0.2), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(243, 232, 223, 0.08), transparent 25%),
+    linear-gradient(180deg, #5b3434 0%, #452829 42%, #311c1c 100%);
+  color: #f3e8df;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(243, 232, 223, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(243, 232, 223, 0.2);
+  border-radius: 999px;
+}
+
+@layer components {
+  .panel-shell {
+    @apply relative overflow-hidden rounded-[1.75rem] border border-cream/10 bg-slate/25 shadow-panel backdrop-blur-xl;
+  }
+
+  .panel-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(243, 232, 223, 0.08), transparent 28%);
+  }
+
+  .panel-header {
+    @apply relative z-10 flex items-center justify-between gap-4 border-b border-cream/10 px-5 py-4;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-[0.32em] text-sand/75;
+  }
+
+  .soft-label {
+    @apply text-[0.7rem] uppercase tracking-[0.26em] text-cream/50;
+  }
+
+  .stat-card {
+    @apply rounded-[1.35rem] border border-cream/10 bg-black/10 px-4 py-3 shadow-glow;
+  }
+
+  .control-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-cream/10 bg-black/15 px-3 py-1.5 text-xs font-medium text-cream/70 transition hover:border-sand/30 hover:text-cream;
+  }
+
+  .primary-btn {
+    @apply inline-flex items-center gap-2 rounded-full border border-sand/35 bg-sand px-4 py-2.5 text-sm font-semibold text-espresso transition duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  .secondary-btn {
+    @apply inline-flex items-center gap-2 rounded-full border border-cream/15 bg-cream/5 px-4 py-2.5 text-sm font-semibold text-cream transition duration-200 hover:border-sand/35 hover:bg-cream/10;
+  }
+
+  .ghost-btn {
+    @apply inline-flex items-center gap-2 rounded-full border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-cream/70 transition hover:border-cream/10 hover:bg-black/10 hover:text-cream;
+  }
+}
+
+.telecom-grid {
+  background-image:
+    linear-gradient(rgba(243, 232, 223, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 232, 223, 0.045) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.noise-pattern {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(243, 232, 223, 0.08) 0 1px, transparent 1px),
+    radial-gradient(circle at 80% 40%, rgba(243, 232, 223, 0.06) 0 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.flow-shell .react-flow__renderer {
+  background:
+    radial-gradient(circle at center, rgba(232, 209, 197, 0.08), transparent 58%),
+    linear-gradient(180deg, rgba(69, 40, 41, 0.12), rgba(69, 40, 41, 0.28));
+}
+
+.flow-shell .react-flow__background path {
+  stroke: rgba(243, 232, 223, 0.06);
+}
+
+.flow-shell .react-flow__controls {
+  border: 1px solid rgba(243, 232, 223, 0.12);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(17, 7, 5, 0.22);
+}
+
+.flow-shell .react-flow__controls button,
+.flow-shell .react-flow__minimap {
+  background: rgba(49, 28, 28, 0.92);
+  color: #f3e8df;
+  border-bottom-color: rgba(243, 232, 223, 0.12);
+}
+
+.flow-shell .react-flow__attribution {
+  background: transparent;
+  color: rgba(243, 232, 223, 0.45);
+}
+
+.telecom-node {
+  min-width: 170px;
+  border-radius: 24px;
+  border: 1px solid rgba(243, 232, 223, 0.12);
+  background: linear-gradient(180deg, rgba(243, 232, 223, 0.09), rgba(49, 28, 28, 0.84));
+  padding: 14px;
+  color: #f3e8df;
+  box-shadow: 0 16px 38px rgba(17, 7, 5, 0.25);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.telecom-node:hover {
+  transform: translateY(-2px);
+}
+
+.telecom-node.suspect {
+  border-color: rgba(242, 185, 80, 0.5);
+  box-shadow: 0 0 0 1px rgba(242, 185, 80, 0.15), 0 0 28px rgba(242, 185, 80, 0.18);
+}
+
+.telecom-node.confirmed {
+  border-color: rgba(245, 106, 106, 0.55);
+  box-shadow: 0 0 0 1px rgba(245, 106, 106, 0.2), 0 0 34px rgba(245, 106, 106, 0.22);
+}
+
+.telecom-node.selected {
+  border-color: rgba(243, 232, 223, 0.44);
+  box-shadow: 0 0 0 1px rgba(243, 232, 223, 0.12), 0 0 30px rgba(232, 209, 197, 0.14);
+}
+
+.telecom-node.pulse::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 28px;
+  border: 1px solid rgba(245, 106, 106, 0.25);
+  animation: nodePulse 2.3s ease-in-out infinite;
+}
+
+.alarm-ticker-enter {
+  animation: alarmSlide 350ms ease-out;
+}
+
+.alarm-critical {
+  animation: criticalBlink 1.2s ease-in-out infinite;
+}
+
+.metric-chart .recharts-cartesian-grid-horizontal line,
+.metric-chart .recharts-cartesian-grid-vertical line {
+  stroke: rgba(243, 232, 223, 0.08);
+}
+
+.metric-chart .recharts-tooltip-wrapper .recharts-default-tooltip {
+  border: 1px solid rgba(243, 232, 223, 0.12) !important;
+  border-radius: 16px !important;
+  background: rgba(49, 28, 28, 0.95) !important;
+  color: #f3e8df !important;
+  box-shadow: 0 20px 50px rgba(17, 7, 5, 0.22);
+}
+
+.ambient-line {
+  stroke: rgba(243, 232, 223, 0.2);
+  stroke-dasharray: 10 12;
+  animation: flowLine 8s linear infinite;
+}
+
+@keyframes nodePulse {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes alarmSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes criticalBlink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(245, 106, 106, 0);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(245, 106, 106, 0.18);
+  }
+}
+
+@keyframes flowLine {
+  0% {
+    stroke-dashoffset: 200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+

@@ -73,6 +73,12 @@ observation_space:
     - name: network_summary
       type: dict
       description: "Layer-by-layer and region-by-region alarm counts"
+    - name: simulation_time_s
+      type: float
+      description: "Deterministic simulation clock in seconds since reset"
+    - name: alarm_age_summary
+      type: dict
+      description: "Aggregate alarm age stats (average/oldest/newest/escalated count)"
 
 reward:
   range: [-inf, ~2.0]

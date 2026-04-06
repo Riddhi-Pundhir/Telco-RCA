@@ -186,7 +186,7 @@ def grade_episode(
         }
 
     efficiency = max(0.0, 1.0 - steps_taken / cfg.max_steps)
-    speed_bonus = max(0.0, 1.0 - elapsed_seconds / 300.0)
+    speed_bonus = max(0.0, 1.0 - elapsed_seconds / 300.0)  # wall-clock intentional for MTTR
     fp_penalty = min(0.8, false_positives * 0.15)
 
     # ── Composite score ──

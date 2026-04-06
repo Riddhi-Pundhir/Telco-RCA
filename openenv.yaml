@@ -89,6 +89,7 @@ reward:
     Reward = efficiency_multiplier + speed_bonus - false_positive_penalty.
     Maximum achievable ~2.0 (instant correct fix, no false positives).
     Each wrong RESTART costs -0.3 and adds to the false_positive_penalty in the final grade.
+    The aggregate false_positive_penalty is capped at 0.8 in both grading and terminal reward shaping.
     Each step costs -0.01.
 
 grading:
@@ -106,6 +107,7 @@ endpoints:
   reset: "POST /reset"
   step:  "POST /step"
   state: "GET /state"
+  state_internal: "GET /state/internal"
   tasks: "GET /tasks"
   grade: "POST /grade"
   health: "GET /health"

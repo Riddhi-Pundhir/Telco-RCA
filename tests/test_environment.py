@@ -77,6 +77,7 @@ class TestEnvironmentReset:
         obs = env.reset(seed=5)
         assert "nodes" in obs.graph
         assert "edges" in obs.graph
+        assert obs.graph["node_count_total"] == TASK_CONFIGS["medium"].num_nodes
         assert obs.graph["node_count_total"] >= len(obs.graph["nodes"])
         if obs.graph["nodes"]:
             first_node = obs.graph["nodes"][0]
@@ -112,17 +113,17 @@ class TestTopology:
     def test_easy_node_count(self):
         env = TelcoRCAEnvironment("easy")
         env.reset()
-        assert len(env._state.nodes) >= 15  # at least 15 nodes for a 20-target
+        assert len(env._state.nodes) == TASK_CONFIGS["easy"].num_nodes
 
     def test_medium_node_count(self):
         env = TelcoRCAEnvironment("medium")
         env.reset()
-        assert len(env._state.nodes) >= 50
+        assert len(env._state.nodes) == TASK_CONFIGS["medium"].num_nodes
 
     def test_hard_node_count(self):
         env = TelcoRCAEnvironment("hard")
         env.reset()
-        assert len(env._state.nodes) >= 200
+        assert len(env._state.nodes) == TASK_CONFIGS["hard"].num_nodes
 
     def test_parent_child_consistency(self):
         """Every child should point back to its parent."""
@@ -299,6 +300,21 @@ class TestEnvironmentStep:
         assert result.info["voltage_v"] < 30
         assert result.info["status"] == "CRITICAL"
 
+    def test_false_positive_penalty_caps_in_live_reward(self):
+        env = TelcoRCAEnvironment("hard")
+        env.reset(seed=9)
+        root = env._state.root_cause_id
+        wrong_nodes = [nid for nid in env._state.nodes if nid != root][:12]
+
+        for wrong in wrong_nodes:
+            result = env.step(AgentAction(action_type="DIAGNOSE", target_node_id=wrong))
+            assert result.done is False
+
+        final = env.step(AgentAction(action_type="RESTART", target_node_id=root))
+        expected = round(1.0 + max(0.0, 1.0 - final.info["mttr_seconds"] / 300.0) - 0.8, 4)
+        assert final.reward == expected
+        assert final.info["final_reward"] == expected
+
 
 # ================================================================== #
 #  Grader Tests                                                        #
@@ -429,11 +445,20 @@ class TestStateEndpoint:
         env = TelcoRCAEnvironment("easy")
         env.reset()
         state = env.state()
-        assert "root_cause_id" in state
         assert state["steps_taken"] == 0
-        assert "root_cause_layer" in state
+        assert state["root_cause_fixed"] is False
+        assert state["correct_diagnosis"] is False
         assert "total_nodes" in state
         assert "regions" in state
+        assert "root_cause_id" not in state
+        assert "root_cause_layer" not in state
+
+    def test_internal_state_can_include_answer_key(self):
+        env = TelcoRCAEnvironment("easy")
+        env.reset()
+        state = env.state(include_answer_key=True)
+        assert "root_cause_id" in state
+        assert "root_cause_layer" in state
 
     def test_state_tracks_steps(self):
         env = TelcoRCAEnvironment("easy")
@@ -452,6 +477,16 @@ class TestStateEndpoint:
         env.step(action)
         state = env.state()
         assert alarm.node_id in state["checked_nodes"]
+
+    def test_state_tracks_resolution_without_leaking_answer_key(self):
+        env = TelcoRCAEnvironment("easy")
+        env.reset()
+        root = env._state.root_cause_id
+        env.step(AgentAction(action_type="RESTART", target_node_id=root))
+        state = env.state()
+        assert state["root_cause_fixed"] is True
+        assert state["resolved_node_id"] == root
+        assert "root_cause_id" not in state
 
 
 # ================================================================== #

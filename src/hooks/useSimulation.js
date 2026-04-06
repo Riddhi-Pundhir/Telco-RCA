@@ -7,10 +7,9 @@ import { getState, getTasks, gradeSimulation, resetSimulation, stepSimulation } 
 import { createStateSocket } from "@/services/socket";
 
 function buildTrajectory(state = {}) {
-  const rootCauseId = state.root_cause_id;
   return {
-    root_cause_fixed: Boolean(rootCauseId && state.restarted_nodes?.includes(rootCauseId)),
-    correct_diagnosis: Boolean(rootCauseId && state.diagnosed_nodes?.includes(rootCauseId)),
+    root_cause_fixed: Boolean(state.root_cause_fixed),
+    correct_diagnosis: Boolean(state.correct_diagnosis),
     steps_taken: state.steps_taken ?? 0,
     false_positives: state.false_positives ?? 0,
     elapsed_seconds: state.simulation_time_s ?? state.elapsed_seconds ?? 0,
@@ -248,10 +247,24 @@ export function useSimulation() {
       setIsLoading(true);
       setError("");
       setTask(nextTask);
+      setObservation(null);
+      setRuntimeState(null);
+      setGrade(null);
+      setSelectedNodeId(null);
+      setMetricsHistory([]);
       setLatestAction(null);
       setLatestInfo(null);
       setAgentMemory(createAgentMemory());
       setTranscript(createTranscript(nextTask));
+      snapshotRef.current = {
+        ...snapshotRef.current,
+        task: nextTask,
+        observation: null,
+        runtimeState: null,
+        explainability: null,
+        selectedNodeId: null,
+        agentMemory: createAgentMemory(),
+      };
 
       try {
         const nextObservation = await resetSimulation({

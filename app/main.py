@@ -140,7 +140,7 @@ def grade(req: GradeRequest):
     if req.task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{req.task}'.")
 
-    # Use the detailed grader
+    # Use the detailed grader with intelligence signals
     result = grade_episode(
         task_name=req.task,
         root_cause_fixed=req.trajectory.get("root_cause_fixed", False),
@@ -148,6 +148,11 @@ def grade(req: GradeRequest):
         false_positives=req.trajectory.get("false_positives", 0),
         elapsed_seconds=req.trajectory.get("elapsed_seconds", 300),
         correct_diagnosis=req.trajectory.get("correct_diagnosis", False),
+        checked_nodes=req.trajectory.get("checked_nodes"),
+        checked_layers=req.trajectory.get("checked_layers"),
+        total_nodes=req.trajectory.get("total_nodes", 0),
+        total_layers_alarming=req.trajectory.get("total_layers_alarming", 0),
+        action_log=req.trajectory.get("action_log"),
     )
     return {
         "task": req.task,

@@ -34,7 +34,7 @@ MODEL_NAME   = os.environ.get("MODEL_NAME",   "claude-sonnet-4-20250514")
 HF_TOKEN     = os.environ.get("HF_TOKEN",     "")
 
 # Server (local for testing; swap for HF Space URL in prod)
-SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:7860")
+SERVER_URL = os.environ.get("SERVER_URL", "https://ayushman098-telco-rca.hf.space/")
 
 client = OpenAI(api_key=HF_TOKEN or "placeholder", base_url=API_BASE_URL)
 

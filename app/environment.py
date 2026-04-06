@@ -24,13 +24,12 @@ Key features:
 
 import random
 import time
-import uuid
 from typing import Any
 from collections import deque, Counter
 
 from .models import (
     NetworkNode, Alarm, AgentObservation, AgentAction,
-    StepResult, EpisodeState, TaskConfig, TASK_CONFIGS
+    StepResult, EpisodeState, TaskConfig, TASK_CONFIGS, Severity
 )
 
 
@@ -42,6 +41,29 @@ class TelcoRCAEnvironment:
     When a parent fails, all downstream children generate symptom alarms.
     Agent must diagnose the root cause without sending unnecessary repair crews.
     """
+    ACTION_TIME_COST_S: dict[str, float] = {
+        "CHECK_LOGS": 8.0,
+        "CHECK_VOLTAGE": 6.0,
+        "TRACE_PATH": 5.0,
+        "RESTART": 15.0,
+        "DIAGNOSE": 4.0,
+    }
+    SEVERITY_ORDER: list[Severity] = ["MINOR", "WARNING", "MAJOR", "CRITICAL"]
+    ESCALATION_INTERVAL_S: dict[str, float] = {
+        "easy": 120.0,
+        "medium": 75.0,
+        "hard": 45.0,
+    }
+    NOISE_TTL_S: dict[str, float] = {
+        "easy": 45.0,
+        "medium": 60.0,
+        "hard": 50.0,
+    }
+    NOISE_SPAWN_PROB: dict[str, float] = {
+        "easy": 0.0,
+        "medium": 0.08,
+        "hard": 0.15,
+    }
 
     def __init__(self, task_name: str = "easy"):
         if task_name not in TASK_CONFIGS:
@@ -63,11 +85,12 @@ class TelcoRCAEnvironment:
         cfg = self.task_config
         nodes, edges, regions = self._build_topology(cfg.num_nodes, cfg.num_regions)
         root_cause_id = self._inject_failure(nodes, cfg)
+        initial_alarms = self._propagate_alarms(nodes, root_cause_id, cfg)
 
         self._state = EpisodeState(
             nodes=nodes,
             root_cause_id=root_cause_id,
-            active_alarms=self._propagate_alarms(nodes, root_cause_id, cfg),
+            active_alarms=initial_alarms,
             checked_nodes=set(),
             restarted_nodes=set(),
             diagnosed_nodes=set(),
@@ -76,6 +99,9 @@ class TelcoRCAEnvironment:
             false_positives=0,
             episode_done=False,
             start_time=time.time(),
+            simulation_time_s=0.0,
+            last_step_advanced_s=0.0,
+            alarm_seq=len(initial_alarms),
             topology_edges=edges,
             regions=regions,
         )
@@ -94,6 +120,16 @@ class TelcoRCAEnvironment:
         reward = -0.01  # small step penalty encourages efficiency
         info: dict[str, Any] = {}
 
+        # Record action for grading intelligence signals
+        s.action_log.append({
+            "step": s.steps_taken,
+            "action_type": action.action_type,
+            "target_node_id": action.target_node_id,
+            "simulation_time_s": round(s.simulation_time_s, 2),
+        })
+        advanced_s = self._advance_simulation_clock(action.action_type)
+        s.last_step_advanced_s = advanced_s
+
         if action.action_type == "CHECK_LOGS":
             reward, info = self._handle_check(action.target_node_id)
         elif action.action_type == "CHECK_VOLTAGE":
@@ -108,10 +144,16 @@ class TelcoRCAEnvironment:
             reward = -0.1
             info["error"] = f"Unknown action: {action.action_type}"
 
+        # Evolve alarms over simulated time (escalation/noise lifecycle).
+        if not s.episode_done:
+            self._evolve_alarms()
+
         # Check termination conditions
         if s.steps_taken >= s.max_steps and not s.episode_done:
             s.episode_done = True
             info["termination"] = "max_steps_exceeded"
+        info["simulation_time_s"] = round(s.simulation_time_s, 2)
+        info["time_advanced_s"] = round(advanced_s, 2)
 
         obs = self._build_observation()
         return StepResult(
@@ -126,6 +168,16 @@ class TelcoRCAEnvironment:
         if self._state is None:
             return {"status": "not_started"}
         s = self._state
+
+        # Compute checked layers for grading
+        checked_layers = [
+            s.nodes[nid].layer for nid in s.checked_nodes if nid in s.nodes
+        ]
+        # Count layers with active alarms
+        layers_alarming = len(set(
+            node.layer for node in s.nodes.values() if node.status != "UP"
+        ))
+
         return {
             "root_cause_id": s.root_cause_id,
             "root_cause_layer": s.nodes[s.root_cause_id].layer,
@@ -133,13 +185,18 @@ class TelcoRCAEnvironment:
             "false_positives": s.false_positives,
             "episode_done": s.episode_done,
             "checked_nodes": list(s.checked_nodes),
+            "checked_layers": checked_layers,
             "restarted_nodes": list(s.restarted_nodes),
             "diagnosed_nodes": list(s.diagnosed_nodes),
             "active_alarm_count": len(s.active_alarms),
             "total_nodes": len(s.nodes),
+            "total_layers_alarming": layers_alarming,
             "elapsed_seconds": round(time.time() - s.start_time, 2),
+            "simulation_time_s": round(s.simulation_time_s, 2),
+            "last_step_advanced_s": round(s.last_step_advanced_s, 2),
             "topology_edge_count": len(s.topology_edges),
             "regions": {k: len(v) for k, v in s.regions.items()},
+            "action_log": s.action_log,
         }
 
     # ------------------------------------------------------------------ #
@@ -295,14 +352,14 @@ class TelcoRCAEnvironment:
     ) -> list[Alarm]:
         """
         BFS from root cause — downstream nodes emit symptom alarms.
-        Also adds noise alarms on non-affected nodes for harder tasks.
+        Also adds adversarial clustered noise on non-affected nodes.
         """
         alarms: list[Alarm] = []
-        queue = deque(nodes[root_id].children)
+        queue = deque((child_id, 1, 0.0) for child_id in nodes[root_id].children)
         visited = {root_id}
         severity_cycle = ["WARNING", "MAJOR", "CRITICAL", "MINOR"]
         alarm_counter = 0
-        base_time = time.time()
+        sim_zero = 0.0
 
         # Root cause's own alarm
         alarms.append(Alarm(
@@ -311,14 +368,21 @@ class TelcoRCAEnvironment:
             severity="CRITICAL",
             message=nodes[root_id].alarm_text or "CRITICAL: Hardware fault",
             layer=nodes[root_id].layer,
-            timestamp=base_time,
+            timestamp=sim_zero,
             is_noise=False,
+            created_at_s=sim_zero,
+            last_updated_at_s=sim_zero,
+            age_s=0.0,
+            depth_from_root=0,
+            propagation_delay_s=0.0,
+            escalation_count=0,
+            source="root_cause",
         ))
         alarm_counter += 1
 
         # Propagate downstream
         while queue:
-            nid = queue.popleft()
+            nid, depth, parent_alarm_time = queue.popleft()
             if nid in visited:
                 continue
             visited.add(nid)
@@ -329,6 +393,8 @@ class TelcoRCAEnvironment:
             sev = random.choice(severity_cycle)
             alarm_text = self._generate_alarm_text(node.layer, sev)
             node.alarm_text = alarm_text
+            propagation_delay = self._sample_propagation_delay_s(node.layer, depth)
+            alarm_time = round(parent_alarm_time + propagation_delay, 2)
 
             alarms.append(Alarm(
                 alarm_id=f"ALM_{alarm_counter:05d}",
@@ -336,48 +402,363 @@ class TelcoRCAEnvironment:
                 severity=sev,
                 message=alarm_text,
                 layer=node.layer,
-                timestamp=base_time + random.uniform(0.1, 5.0),
+                timestamp=alarm_time,
                 is_noise=False,
+                created_at_s=alarm_time,
+                last_updated_at_s=alarm_time,
+                age_s=0.0,
+                depth_from_root=depth,
+                propagation_delay_s=propagation_delay,
+                escalation_count=0,
+                source="cascade",
             ))
             alarm_counter += 1
 
-            # Noise alarm on this node (duplicate / transient)
-            if random.random() < cfg.noise_ratio:
-                alarms.append(Alarm(
-                    alarm_id=f"ALM_{alarm_counter:05d}",
-                    node_id=nid,
-                    severity="WARNING",
-                    message="Periodic heartbeat miss (transient)",
-                    layer=node.layer,
-                    timestamp=base_time + random.uniform(0.5, 10.0),
-                    is_noise=True,
-                ))
-                alarm_counter += 1
+            queue.extend(
+                (child_id, depth + 1, alarm_time)
+                for child_id in nodes[nid].children
+            )
 
-            queue.extend(nodes[nid].children)
-
-        # Extra noise: alarms from completely unrelated nodes
         if cfg.noise_ratio > 0:
-            unaffected = [
-                nid for nid in nodes
-                if nid not in visited and nodes[nid].layer != "power_unit"
+            noise_alarms, alarm_counter = self._build_adversarial_noise_clusters(
+                nodes=nodes,
+                blocked_nodes=visited,
+                cfg=cfg,
+                starting_alarm_counter=alarm_counter,
+            )
+            alarms.extend(noise_alarms)
+
+        alarms.sort(key=lambda alarm: alarm.timestamp)
+        return alarms
+
+    def _build_adversarial_noise_clusters(
+        self,
+        *,
+        nodes: dict[str, NetworkNode],
+        blocked_nodes: set[str],
+        cfg: TaskConfig,
+        starting_alarm_counter: int,
+    ) -> tuple[list[Alarm], int]:
+        """
+        Build fake incident clusters on unaffected subtrees so noise resembles a
+        plausible local outage rather than isolated, trivially filtered blips.
+        """
+        candidate_ids = [
+            nid for nid, node in nodes.items()
+            if nid not in blocked_nodes and node.layer != "power_unit"
+        ]
+        if not candidate_ids:
+            return [], starting_alarm_counter
+
+        target_noise = max(2, int(len(candidate_ids) * cfg.noise_ratio * 0.18))
+        noise_alarms: list[Alarm] = []
+        used_nodes: set[str] = set()
+        alarm_counter = starting_alarm_counter
+        max_cluster_size = 3 if self.task_name == "medium" else 6
+
+        while len(noise_alarms) < target_noise:
+            available_anchors = [
+                nid for nid in candidate_ids
+                if nid not in used_nodes and self._noise_cluster_capacity(nodes, nid, blocked_nodes | used_nodes) >= 2
             ]
-            noise_count = int(len(unaffected) * cfg.noise_ratio * 0.3)
-            for nid in random.sample(unaffected, min(noise_count, len(unaffected))):
-                sev = random.choice(["MINOR", "WARNING"])
-                alarms.append(Alarm(
+            if not available_anchors:
+                break
+
+            anchor_id = self._choose_noise_anchor(nodes, available_anchors)
+            remaining = target_noise - len(noise_alarms)
+            cluster_size = min(max_cluster_size, remaining)
+            cluster_nodes = self._collect_noise_cluster_nodes(
+                nodes=nodes,
+                anchor_id=anchor_id,
+                blocked_nodes=blocked_nodes | used_nodes,
+                cluster_size=cluster_size,
+            )
+            if len(cluster_nodes) < 2:
+                used_nodes.add(anchor_id)
+                continue
+
+            cluster_start_s = round(random.uniform(1.5, 18.0), 2)
+            for idx, node_id in enumerate(cluster_nodes):
+                node = nodes[node_id]
+                severity = self._sample_cluster_noise_severity(node.layer, idx)
+                alarm_time = round(cluster_start_s + idx * random.uniform(0.35, 2.2), 2)
+                alarm_text = self._generate_alarm_text(node.layer, severity)
+
+                # Mark clustered noise nodes as degraded so summaries reflect the fake incident.
+                node.status = "DEGRADED"
+                node.alarm_text = alarm_text
+
+                noise_alarms.append(Alarm(
                     alarm_id=f"ALM_{alarm_counter:05d}",
-                    node_id=nid,
-                    severity=sev,
-                    message=self._generate_noise_text(nodes[nid].layer),
-                    layer=nodes[nid].layer,
-                    timestamp=base_time + random.uniform(0, 15.0),
+                    node_id=node_id,
+                    severity=severity,
+                    message=alarm_text,
+                    layer=node.layer,
+                    timestamp=alarm_time,
                     is_noise=True,
+                    created_at_s=alarm_time,
+                    last_updated_at_s=alarm_time,
+                    age_s=0.0,
+                    depth_from_root=-1,
+                    propagation_delay_s=round(max(0.0, alarm_time - cluster_start_s), 2),
+                    escalation_count=0,
+                    source="noise",
                 ))
                 alarm_counter += 1
+                used_nodes.add(node_id)
 
-        random.shuffle(alarms)
-        return alarms
+                # Noise clusters keep voltage near nominal so they mimic network symptoms,
+                # not hard power faults that can be ruled out instantly.
+                if node.layer == "core_switch":
+                    node.voltage = round(random.uniform(38.0, 45.5), 1)
+                elif node.layer == "radio_controller":
+                    node.voltage = round(random.uniform(40.0, 46.0), 1)
+                else:
+                    node.voltage = round(random.uniform(42.0, 47.5), 1)
+
+        return noise_alarms, alarm_counter
+
+    def _noise_cluster_capacity(
+        self,
+        nodes: dict[str, NetworkNode],
+        anchor_id: str,
+        blocked_nodes: set[str],
+    ) -> int:
+        """Return how many correlated nodes we can assemble around an anchor."""
+        return len(self._collect_noise_cluster_nodes(
+            nodes=nodes,
+            anchor_id=anchor_id,
+            blocked_nodes=blocked_nodes,
+            cluster_size=6,
+        ))
+
+    def _choose_noise_anchor(self, nodes: dict[str, NetworkNode], candidate_ids: list[str]) -> str:
+        """Prefer anchors that can spawn convincing multi-node clusters."""
+        layer_weights = {
+            "core_switch": 5,
+            "radio_controller": 4,
+            "cell_tower": 2,
+        }
+        weights = [layer_weights.get(nodes[nid].layer, 1) for nid in candidate_ids]
+        return random.choices(candidate_ids, weights=weights, k=1)[0]
+
+    def _collect_noise_cluster_nodes(
+        self,
+        *,
+        nodes: dict[str, NetworkNode],
+        anchor_id: str,
+        blocked_nodes: set[str],
+        cluster_size: int,
+    ) -> list[str]:
+        """Collect nearby parent/child/sibling nodes for a fake localized incident."""
+        if anchor_id in blocked_nodes:
+            return []
+
+        ordered_ids: list[str] = []
+        seen: set[str] = set()
+
+        def add(node_id: str | None):
+            if not node_id or node_id in blocked_nodes or node_id in seen:
+                return
+            ordered_ids.append(node_id)
+            seen.add(node_id)
+
+        anchor = nodes[anchor_id]
+        add(anchor_id)
+
+        if anchor.layer == "core_switch":
+            children = [cid for cid in anchor.children if cid not in blocked_nodes]
+            random.shuffle(children)
+            for child_id in children[:2]:
+                add(child_id)
+                grandchildren = [gid for gid in nodes[child_id].children if gid not in blocked_nodes]
+                random.shuffle(grandchildren)
+                for grandchild_id in grandchildren[:2]:
+                    add(grandchild_id)
+
+        elif anchor.layer == "radio_controller":
+            children = [cid for cid in anchor.children if cid not in blocked_nodes]
+            random.shuffle(children)
+            for child_id in children[:3]:
+                add(child_id)
+
+            parent_id = anchor.parent_id
+            if parent_id and parent_id not in blocked_nodes:
+                siblings = [
+                    sid for sid in nodes[parent_id].children
+                    if sid not in blocked_nodes and sid != anchor_id
+                ]
+                random.shuffle(siblings)
+                for sibling_id in siblings[:1]:
+                    add(sibling_id)
+
+        elif anchor.layer == "cell_tower":
+            parent_id = anchor.parent_id
+            if parent_id and parent_id not in blocked_nodes:
+                add(parent_id)
+                siblings = [
+                    sid for sid in nodes[parent_id].children
+                    if sid not in blocked_nodes and sid != anchor_id
+                ]
+                random.shuffle(siblings)
+                for sibling_id in siblings[:3]:
+                    add(sibling_id)
+
+        return ordered_ids[:cluster_size]
+
+    def _sample_cluster_noise_severity(self, layer: str, index_in_cluster: int) -> Severity:
+        """Shape clustered noise to resemble a plausible outage cone."""
+        if index_in_cluster == 0:
+            if layer in ("core_switch", "radio_controller"):
+                return random.choice(["MAJOR", "CRITICAL"])
+            return random.choice(["WARNING", "MAJOR"])
+        if layer == "cell_tower":
+            return random.choice(["WARNING", "MAJOR"])
+        return random.choice(["MINOR", "WARNING", "MAJOR"])
+
+    def _sample_propagation_delay_s(self, layer: str, depth: int) -> float:
+        """Sample alarm propagation delay using layer and BFS depth."""
+        layer_base_s = {
+            "power_unit": 0.4,
+            "core_switch": 0.8,
+            "radio_controller": 1.2,
+            "cell_tower": 1.8,
+        }
+        base = layer_base_s.get(layer, 1.0)
+        depth_factor = 1.0 + max(depth - 1, 0) * 0.15
+        jitter = random.uniform(0.2, 1.8)
+        return round(base * depth_factor + jitter, 2)
+
+    def _advance_simulation_clock(self, action_type: str) -> float:
+        """Advance deterministic simulation clock based on action latency."""
+        s = self._state
+        if s is None:
+            return 0.0
+        delta = self.ACTION_TIME_COST_S.get(action_type, 5.0)
+        s.simulation_time_s = round(s.simulation_time_s + delta, 2)
+        return delta
+
+    def _next_alarm_id(self) -> str:
+        """Return a unique alarm ID for in-episode generated alarms."""
+        s = self._state
+        if s is None:
+            return "ALM_00000"
+        alarm_id = f"ALM_{s.alarm_seq:05d}"
+        s.alarm_seq += 1
+        return alarm_id
+
+    def _next_severity(self, severity: Severity) -> Severity:
+        idx = self.SEVERITY_ORDER.index(severity)
+        if idx >= len(self.SEVERITY_ORDER) - 1:
+            return "CRITICAL"
+        return self.SEVERITY_ORDER[idx + 1]
+
+    def _escalate_alarm_message(self, message: str, severity: Severity, escalation_count: int) -> str:
+        """Replace severity prefix and append escalation metadata."""
+        without_tag = message.split(" [ESCALATED")[0]
+        if ":" in without_tag:
+            _, tail = without_tag.split(":", 1)
+            base = tail.strip()
+        else:
+            base = without_tag.strip()
+        return f"{severity}: {base} [ESCALATED x{escalation_count}]"
+
+    def _evolve_alarms(self):
+        """
+        Evolve active alarms over simulated time:
+          - increase alarm age
+          - escalate unresolved alarms
+          - clear stale transients / resolved alarms
+          - spawn occasional new transient alarms
+        """
+        s = self._state
+        if s is None:
+            return
+
+        now_s = s.simulation_time_s
+        escalation_interval_s = self.ESCALATION_INTERVAL_S.get(self.task_name, 60.0)
+        noise_ttl_s = self.NOISE_TTL_S.get(self.task_name, 60.0)
+        keep: list[Alarm] = []
+        cleared_noise_nodes: set[str] = set()
+
+        for alarm in s.active_alarms:
+            node = s.nodes.get(alarm.node_id)
+            age_s = round(max(0.0, now_s - alarm.created_at_s), 2)
+            alarm.age_s = age_s
+            alarm.last_updated_at_s = round(now_s, 2)
+
+            # Clear non-noise alarms once node has recovered.
+            if (not alarm.is_noise) and node and node.status == "UP":
+                continue
+
+            # Transient alarms self-clear after TTL.
+            if alarm.is_noise and age_s >= noise_ttl_s:
+                cleared_noise_nodes.add(alarm.node_id)
+                continue
+
+            # Escalate unresolved, non-noise alarms with age.
+            if (not alarm.is_noise) and alarm.severity != "CRITICAL":
+                threshold = (alarm.escalation_count + 1) * escalation_interval_s
+                if age_s >= threshold:
+                    previous = alarm.severity
+                    alarm.severity = self._next_severity(alarm.severity)
+                    alarm.escalation_count += 1
+                    alarm.escalated_from = previous
+                    alarm.last_escalated_at_s = round(now_s, 2)
+                    alarm.message = self._escalate_alarm_message(
+                        alarm.message,
+                        alarm.severity,
+                        alarm.escalation_count,
+                    )
+
+            keep.append(alarm)
+
+        # Spawn occasional new transient alarms for medium/hard dynamics.
+        spawn_prob = self.NOISE_SPAWN_PROB.get(self.task_name, 0.0)
+        if self.task_config.noise_ratio > 0 and random.random() < spawn_prob:
+            alarming_nodes = {a.node_id for a in keep}
+            candidates = [
+                nid for nid, node in s.nodes.items()
+                if node.layer != "power_unit" and node.status == "UP" and nid not in alarming_nodes
+            ]
+            if candidates:
+                nid = random.choice(candidates)
+                node = s.nodes[nid]
+                noise_severity: Severity = random.choice(["MINOR", "WARNING"])
+                noise_message = self._generate_noise_text(node.layer)
+                node.status = "DEGRADED"
+                node.alarm_text = noise_message
+                keep.append(Alarm(
+                    alarm_id=self._next_alarm_id(),
+                    node_id=nid,
+                    severity=noise_severity,
+                    message=noise_message,
+                    layer=node.layer,
+                    timestamp=round(now_s, 2),
+                    is_noise=True,
+                    created_at_s=round(now_s, 2),
+                    last_updated_at_s=round(now_s, 2),
+                    age_s=0.0,
+                    depth_from_root=-1,
+                    propagation_delay_s=0.0,
+                    escalation_count=0,
+                    source="evolved_noise",
+                ))
+                node.voltage = round(random.uniform(42.0, 47.5), 1)
+
+        surviving_alarm_nodes = {alarm.node_id for alarm in keep}
+        for node_id in cleared_noise_nodes:
+            if node_id in surviving_alarm_nodes:
+                continue
+            node = s.nodes.get(node_id)
+            if node is None or node.status == "FAILED":
+                continue
+            node.status = "UP"
+            node.alarm_text = None
+            node.voltage = 48.0
+
+        keep.sort(key=lambda alarm: alarm.created_at_s)
+        s.active_alarms = keep
 
     def _generate_alarm_text(self, layer: str, severity: str) -> str:
         """Generate realistic alarm text for a given layer and severity."""
@@ -534,7 +915,7 @@ class TelcoRCAEnvironment:
         if node_id == s.root_cause_id:
             # ✅ Correct fix — clear all downstream alarms
             self._clear_downstream(node_id)
-            elapsed = round(time.time() - s.start_time, 2)
+            elapsed = round(s.simulation_time_s, 2)
             mttr_bonus = max(0.0, 1.0 - elapsed / 300)  # bonus for speed
             fp_penalty = s.false_positives * 0.15
             reward = 1.0 + mttr_bonus - fp_penalty
@@ -568,7 +949,7 @@ class TelcoRCAEnvironment:
         s.diagnosed_nodes.add(node_id)
 
         if node_id == s.root_cause_id:
-            elapsed = round(time.time() - s.start_time, 2)
+            elapsed = round(s.simulation_time_s, 2)
             mttr_bonus = max(0.0, 1.0 - elapsed / 300)
             fp_penalty = s.false_positives * 0.1
             reward = 0.8 + mttr_bonus * 0.5 - fp_penalty
@@ -607,6 +988,24 @@ class TelcoRCAEnvironment:
     def _build_observation(self) -> AgentObservation:
         """Build the agent-facing observation, including a network topology summary."""
         s = self._state
+        now_s = s.simulation_time_s
+
+        alarm_ages: list[float] = []
+        escalated_alarm_count = 0
+        for alarm in s.active_alarms:
+            age_s = round(max(0.0, now_s - alarm.created_at_s), 2)
+            alarm.age_s = age_s
+            alarm.last_updated_at_s = round(now_s, 2)
+            alarm_ages.append(age_s)
+            if alarm.escalation_count > 0:
+                escalated_alarm_count += 1
+
+        alarm_age_summary = {
+            "average_age_s": round(sum(alarm_ages) / len(alarm_ages), 2) if alarm_ages else 0.0,
+            "oldest_age_s": round(max(alarm_ages), 2) if alarm_ages else 0.0,
+            "newest_age_s": round(min(alarm_ages), 2) if alarm_ages else 0.0,
+            "escalated_alarm_count": escalated_alarm_count,
+        }
 
         # Build layer summary
         layer_counts: Counter = Counter()
@@ -644,4 +1043,6 @@ class TelcoRCAEnvironment:
             episode_done=s.episode_done,
             task_description=self.task_config.description,
             network_summary=network_summary,
+            simulation_time_s=round(now_s, 2),
+            alarm_age_summary=alarm_age_summary,
         )

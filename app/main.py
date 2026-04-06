@@ -4,13 +4,14 @@ Telco-RCA FastAPI server — implements the OpenEnv HTTP interface.
 Endpoints:
     POST /reset    — Start a new episode for a given task
     POST /step     — Execute an agent action
-    GET  /state    — Internal state for debugging/grading
+    GET  /state    — Sanitized runtime state for UI/grading inputs
+    GET  /state/internal — Token-protected debug state with answer key
     GET  /tasks    — List all available tasks
     GET  /health   — Liveness check
     POST /grade    — Score a complete trajectory
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -31,11 +32,36 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
+def _load_allowed_origins() -> list[str]:
+    configured = os.getenv("ALLOWED_ORIGINS", "")
+    if configured.strip():
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+
+    defaults = [
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:7860",
+        "http://127.0.0.1:7860",
+    ]
+    public_base_url = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    if public_base_url:
+        defaults.append(public_base_url)
+    return defaults
+
+
+ALLOWED_ORIGINS = _load_allowed_origins()
+ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", r"https://.*\.hf\.space")
+INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
 # Route for the main UI
@@ -56,6 +82,13 @@ def _get_env(task: str) -> TelcoRCAEnvironment:
     if task not in _envs:
         _envs[task] = TelcoRCAEnvironment(task_name=task)
     return _envs[task]
+
+
+def _require_admin_token(x_admin_token: str | None):
+    if not INTERNAL_API_TOKEN:
+        raise HTTPException(404, "Internal state endpoint is disabled.")
+    if x_admin_token != INTERNAL_API_TOKEN:
+        raise HTTPException(401, "Invalid admin token.")
 
 
 # ------------------------------------------------------------------ #
@@ -133,6 +166,14 @@ def state(task: str = "easy"):
     if task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{task}'.")
     return _get_env(task).state()
+
+
+@app.get("/state/internal")
+def internal_state(task: str = "easy", x_admin_token: str | None = Header(default=None, alias="X-Admin-Token")):
+    if task not in TASK_CONFIGS:
+        raise HTTPException(400, f"Unknown task '{task}'.")
+    _require_admin_token(x_admin_token)
+    return _get_env(task).state(include_answer_key=True)
 
 
 @app.post("/grade")

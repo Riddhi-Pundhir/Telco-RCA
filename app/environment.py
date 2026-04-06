@@ -48,6 +48,7 @@ class TelcoRCAEnvironment:
         "RESTART": 15.0,
         "DIAGNOSE": 4.0,
     }
+    MAX_FALSE_POSITIVE_PENALTY: float = 0.8
     SEVERITY_ORDER: list[Severity] = ["MINOR", "WARNING", "MAJOR", "CRITICAL"]
     ESCALATION_INTERVAL_S: dict[str, float] = {
         "easy": 120.0,
@@ -163,8 +164,8 @@ class TelcoRCAEnvironment:
             info=info,
         )
 
-    def state(self) -> dict:
-        """Return full internal state for debugging / grader access."""
+    def state(self, include_answer_key: bool = False) -> dict:
+        """Return current episode state, optionally including the hidden answer key."""
         if self._state is None:
             return {"status": "not_started"}
         s = self._state
@@ -177,10 +178,9 @@ class TelcoRCAEnvironment:
         layers_alarming = len(set(
             node.layer for node in s.nodes.values() if node.status != "UP"
         ))
-
-        return {
-            "root_cause_id": s.root_cause_id,
-            "root_cause_layer": s.nodes[s.root_cause_id].layer,
+        root_cause_fixed = s.root_cause_id in s.restarted_nodes
+        correct_diagnosis = s.root_cause_id in s.diagnosed_nodes
+        payload = {
             "steps_taken": s.steps_taken,
             "false_positives": s.false_positives,
             "episode_done": s.episode_done,
@@ -197,7 +197,16 @@ class TelcoRCAEnvironment:
             "topology_edge_count": len(s.topology_edges),
             "regions": {k: len(v) for k, v in s.regions.items()},
             "action_log": s.action_log,
+            "root_cause_fixed": root_cause_fixed,
+            "correct_diagnosis": correct_diagnosis,
+            "resolved_node_id": s.root_cause_id if s.episode_done and (root_cause_fixed or correct_diagnosis) else None,
         }
+
+        if include_answer_key:
+            payload["root_cause_id"] = s.root_cause_id
+            payload["root_cause_layer"] = s.nodes[s.root_cause_id].layer
+
+        return payload
 
     # ------------------------------------------------------------------ #
     #  Topology & failure simulation                                       #
@@ -222,9 +231,10 @@ class TelcoRCAEnvironment:
         edges: list[tuple[str, str]] = []
         regions: dict[str, list[str]] = {f"region_{i}": [] for i in range(num_regions)}
         region_names = list(regions.keys())
+        layer_counts = self._plan_layer_counts(num_nodes)
 
         # ── Layer 0: Power Units ──
-        n_power = max(1, num_nodes // 20)
+        n_power = layer_counts["power_unit"]
         for i in range(n_power):
             nid = f"PWR_{i:03d}"
             region = region_names[i % num_regions]
@@ -238,67 +248,113 @@ class TelcoRCAEnvironment:
             regions[region].append(nid)
 
         # ── Layer 1: Core Switches ──
-        for p_idx in range(n_power):
-            parent_id = f"PWR_{p_idx:03d}"
-            n_sw = random.randint(2, 4)
-            for s_idx in range(n_sw):
-                nid = f"SW_{p_idx:02d}_{s_idx:02d}"
-                region = nodes[parent_id].region
-                nodes[nid] = NetworkNode(
-                    node_id=nid, layer="core_switch",
-                    children=[], parent_id=parent_id, status="UP",
-                    alarm_text=None, region=region,
-                    voltage=48.0, temperature_c=round(random.uniform(30, 55), 1),
-                    uptime_hours=round(random.uniform(100, 15000), 1),
-                )
-                nodes[parent_id].children.append(nid)
-                edges.append((parent_id, nid))
-                regions[region].append(nid)
+        power_ids = sorted(nid for nid, node in nodes.items() if node.layer == "power_unit")
+        switch_slots = {power_id: 0 for power_id in power_ids}
+        for parent_id in self._expand_parent_ids(power_ids, layer_counts["core_switch"]):
+            slot = switch_slots[parent_id]
+            switch_slots[parent_id] += 1
+            power_idx = int(parent_id.split("_")[1])
+            nid = f"SW_{power_idx:02d}_{slot:02d}"
+            region = nodes[parent_id].region
+            nodes[nid] = NetworkNode(
+                node_id=nid, layer="core_switch",
+                children=[], parent_id=parent_id, status="UP",
+                alarm_text=None, region=region,
+                voltage=48.0, temperature_c=round(random.uniform(30, 55), 1),
+                uptime_hours=round(random.uniform(100, 15000), 1),
+            )
+            nodes[parent_id].children.append(nid)
+            edges.append((parent_id, nid))
+            regions[region].append(nid)
 
         # ── Layer 2: Radio Controllers ──
-        switches = [n for n in nodes if n.startswith("SW_")]
-        for sw_id in switches:
-            n_rc = random.randint(2, 5)
-            for rc_idx in range(n_rc):
-                nid = f"RC_{sw_id[3:]}_{rc_idx:02d}"
-                region = nodes[sw_id].region
-                nodes[nid] = NetworkNode(
-                    node_id=nid, layer="radio_controller",
-                    children=[], parent_id=sw_id, status="UP",
-                    alarm_text=None, region=region,
-                    voltage=48.0, temperature_c=round(random.uniform(35, 65), 1),
-                    uptime_hours=round(random.uniform(100, 12000), 1),
-                )
-                nodes[sw_id].children.append(nid)
-                edges.append((sw_id, nid))
-                regions[region].append(nid)
+        switches = sorted(nid for nid, node in nodes.items() if node.layer == "core_switch")
+        rc_slots = {switch_id: 0 for switch_id in switches}
+        for sw_id in self._expand_parent_ids(switches, layer_counts["radio_controller"]):
+            rc_idx = rc_slots[sw_id]
+            rc_slots[sw_id] += 1
+            nid = f"RC_{sw_id[3:]}_{rc_idx:02d}"
+            region = nodes[sw_id].region
+            nodes[nid] = NetworkNode(
+                node_id=nid, layer="radio_controller",
+                children=[], parent_id=sw_id, status="UP",
+                alarm_text=None, region=region,
+                voltage=48.0, temperature_c=round(random.uniform(35, 65), 1),
+                uptime_hours=round(random.uniform(100, 12000), 1),
+            )
+            nodes[sw_id].children.append(nid)
+            edges.append((sw_id, nid))
+            regions[region].append(nid)
 
-        # ── Layer 3: Cell Towers — fill remaining quota ──
-        rcs = [n for n in nodes if n.startswith("RC_")]
-        towers_needed = max(0, num_nodes - len(nodes))
-        per_rc = max(1, towers_needed // max(1, len(rcs)))
-        t_global = 0
-        for rc_id in rcs:
-            for t_idx in range(per_rc):
-                nid = f"TOWER_{rc_id[3:]}_{t_idx:02d}"
-                region = nodes[rc_id].region
-                nodes[nid] = NetworkNode(
-                    node_id=nid, layer="cell_tower",
-                    children=[], parent_id=rc_id, status="UP",
-                    alarm_text=None, region=region,
-                    voltage=48.0, temperature_c=round(random.uniform(20, 50), 1),
-                    uptime_hours=round(random.uniform(50, 10000), 1),
-                )
-                nodes[rc_id].children.append(nid)
-                edges.append((rc_id, nid))
-                regions[region].append(nid)
-                t_global += 1
-                if len(nodes) >= num_nodes:
-                    break
-            if len(nodes) >= num_nodes:
-                break
+        # ── Layer 3: Cell Towers — fill remaining quota exactly ──
+        rcs = sorted(nid for nid, node in nodes.items() if node.layer == "radio_controller")
+        tower_slots = {rc_id: 0 for rc_id in rcs}
+        for rc_id in self._expand_parent_ids(rcs, layer_counts["cell_tower"]):
+            tower_idx = tower_slots[rc_id]
+            tower_slots[rc_id] += 1
+            nid = f"TOWER_{rc_id[3:]}_{tower_idx:02d}"
+            region = nodes[rc_id].region
+            nodes[nid] = NetworkNode(
+                node_id=nid, layer="cell_tower",
+                children=[], parent_id=rc_id, status="UP",
+                alarm_text=None, region=region,
+                voltage=48.0, temperature_c=round(random.uniform(20, 50), 1),
+                uptime_hours=round(random.uniform(50, 10000), 1),
+            )
+            nodes[rc_id].children.append(nid)
+            edges.append((rc_id, nid))
+            regions[region].append(nid)
 
         return nodes, edges, regions
+
+    def _plan_layer_counts(self, num_nodes: int) -> dict[str, int]:
+        """Allocate exact per-layer node counts while preserving a realistic shape."""
+        if num_nodes < 4:
+            raise ValueError("Topology requires at least 4 nodes to represent all layers.")
+
+        power_units = max(1, min(num_nodes - 3, num_nodes // 20))
+        remaining_after_power = num_nodes - power_units
+
+        core_switch_target = max(power_units * 2, round(num_nodes * 0.17))
+        core_switches = min(max(1, remaining_after_power - 2), core_switch_target)
+        remaining_after_switches = num_nodes - power_units - core_switches
+
+        radio_target = max(core_switches, round(num_nodes * 0.34))
+        radio_controllers = min(
+            max(1, remaining_after_switches - 1),
+            max(1, remaining_after_switches // 2),
+            radio_target,
+        )
+        cell_towers = num_nodes - power_units - core_switches - radio_controllers
+
+        if cell_towers < radio_controllers:
+            transferable = min(radio_controllers - core_switches, radio_controllers - cell_towers)
+            radio_controllers -= max(0, transferable)
+            cell_towers = num_nodes - power_units - core_switches - radio_controllers
+
+        return {
+            "power_unit": power_units,
+            "core_switch": core_switches,
+            "radio_controller": radio_controllers,
+            "cell_tower": cell_towers,
+        }
+
+    def _expand_parent_ids(self, parent_ids: list[str], child_count: int) -> list[str]:
+        """Distribute children across parents while keeping each parent represented."""
+        if not parent_ids or child_count <= 0:
+            return []
+
+        ordered_parents = list(parent_ids)
+        assigned_parents: list[str] = []
+        random.shuffle(ordered_parents)
+
+        while len(assigned_parents) < child_count:
+            if len(assigned_parents) % len(ordered_parents) == 0:
+                random.shuffle(ordered_parents)
+            parent_id = ordered_parents[len(assigned_parents) % len(ordered_parents)]
+            assigned_parents.append(parent_id)
+
+        return assigned_parents
 
     def _inject_failure(self, nodes: dict[str, NetworkNode], cfg: TaskConfig) -> str:
         """Pick a root cause node and mark it as FAILED with realistic diagnostics."""
@@ -653,6 +709,13 @@ class TelcoRCAEnvironment:
             return "CRITICAL"
         return self.SEVERITY_ORDER[idx + 1]
 
+    def _false_positive_penalty(self, weight: float) -> float:
+        """Cap false-positive penalties so reward shaping stays bounded."""
+        s = self._state
+        if s is None:
+            return 0.0
+        return min(self.MAX_FALSE_POSITIVE_PENALTY, s.false_positives * weight)
+
     def _escalate_alarm_message(self, message: str, severity: Severity, escalation_count: int) -> str:
         """Replace severity prefix and append escalation metadata."""
         without_tag = message.split(" [ESCALATED")[0]
@@ -1003,7 +1066,7 @@ class TelcoRCAEnvironment:
             self._clear_downstream(node_id)
             elapsed = round(s.simulation_time_s, 2)
             mttr_bonus = max(0.0, 1.0 - elapsed / 300)  # bonus for speed
-            fp_penalty = s.false_positives * 0.15
+            fp_penalty = self._false_positive_penalty(0.15)
             reward = 1.0 + mttr_bonus - fp_penalty
             s.episode_done = True
             return reward, {
@@ -1037,7 +1100,7 @@ class TelcoRCAEnvironment:
         if node_id == s.root_cause_id:
             elapsed = round(s.simulation_time_s, 2)
             mttr_bonus = max(0.0, 1.0 - elapsed / 300)
-            fp_penalty = s.false_positives * 0.1
+            fp_penalty = self._false_positive_penalty(0.1)
             reward = 0.8 + mttr_bonus * 0.5 - fp_penalty
             s.episode_done = True
             return reward, {

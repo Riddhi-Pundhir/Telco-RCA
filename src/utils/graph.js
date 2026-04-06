@@ -55,10 +55,7 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
   const alarmMap = new Map(activeAlarms.map((alarm) => [alarm.node_id, alarm]));
   const positions = createPositions(graph.nodes);
   const nodeMap = new Map(graph.nodes.map((node) => [node.node_id, node]));
-  const confirmedRootId =
-    state?.episode_done && (state?.diagnosed_nodes?.includes?.(state.root_cause_id) || state?.restarted_nodes?.includes?.(state.root_cause_id))
-      ? state.root_cause_id
-      : null;
+  const confirmedRootId = state?.episode_done ? state?.resolved_node_id ?? null : null;
 
   const nodes = graph.nodes.map((node) => {
     const suspect = explainability?.primaryCandidate?.nodeId === node.node_id;
@@ -101,4 +98,3 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
 
   return { nodes, edges, nodeMap };
 }
-

@@ -66,6 +66,8 @@ Three rigorously tuned difficulty tiers to test frontier model graph-reasoning:
 | 🟡 **Medium**| 100 | 3 | 10–50 | 20% | 30 | **Multi-Alarm Correlation:** Correlate parallel failures across regional boundaries. Introduces distractor noise. |
 | 🔴 **Hard** | 500 | 5 | 50–300 | 40% | 50 | **KG Traversal:** Extensive 500-node graph tracing. The agent must distinguish critical physical hardware faults from sweeping logical cascades. |
 
+Each reset now builds the exact configured node count for the chosen task instead of using a looser lower-bound topology.
+
 ---
 
 ## ⚡ Action Space
@@ -104,14 +106,29 @@ docker run -p 7860:7860 \
   -e API_BASE_URL=https://api.anthropic.com/v1 \
   -e MODEL_NAME=claude-sonnet-4-20250514 \
   -e HF_TOKEN=your_key \
+  -e PUBLIC_BASE_URL=http://localhost:7860 \
+  -e INTERNAL_API_TOKEN=change-me \
   telco-rca
 ```
 *Visit `http://localhost:7860` for the animated web dashboard.*
 
+### 1a. Hugging Face Space Variables / Secrets
+
+Configure these in the Space settings instead of committing them:
+
+- `HF_TOKEN`: provider token used by `inference.py`
+- `API_BASE_URL`: upstream LLM endpoint
+- `MODEL_NAME`: model identifier
+- `PUBLIC_BASE_URL`: your public Space URL, for example `https://ayushman098-telco-rca.hf.space`
+- `INTERNAL_API_TOKEN`: optional token for `/state/internal`
+- `ALLOWED_ORIGINS`: optional comma-separated override for CORS if you want to replace the default local + `*.hf.space` policy
+
+The React frontend uses same-origin API calls by default, so the Space does not need a separate frontend API base URL.
+
 ### 2. Standard Local Environment
 ```bash
 pip install -r requirements.txt
-npm install
+npm ci
 
 # Terminal 1: FastAPI backend
 uvicorn app.main:app --host 0.0.0.0 --port 7860
@@ -131,6 +148,7 @@ The Vite app builds into `app/static/`, so a production build is served directly
 ### 3. Run Baseline Agent
 We provide a compliant `inference.py` script bridging heuristics with OpenAI-spec LLM API clients:
 ```bash
+SERVER_URL=https://ayushman098-telco-rca.hf.space \
 python inference.py
 ```
 
@@ -144,7 +162,8 @@ python inference.py
 | `GET` | `/tasks` | Detailed metadata for all defined topology tasks |
 | `POST`| `/reset` | Bootstraps a chaotic graph state: `{"task": "hard", "seed": 42}` |
 | `POST`| `/step` | Evaluates diagnostics: `{"task": "hard", "action": {...}}` |
-| `GET` | `/state` | Exposes internal environment variables for grading engines |
+| `GET` | `/state` | Safe runtime state for the dashboard and grading inputs; does not expose the hidden root cause |
+| `GET` | `/state/internal` | Optional token-protected debug state; send `X-Admin-Token` |
 | `POST`| `/grade` | Calculates explicit precision/recall F1 scores mapped to MTTR |
 
 ---

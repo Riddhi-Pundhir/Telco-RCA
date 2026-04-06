@@ -2,10 +2,10 @@ FROM node:20-alpine AS frontend
 
 WORKDIR /frontend
 
-COPY package.json vite.config.js tailwind.config.js postcss.config.js index.html ./
+COPY package.json package-lock.json vite.config.js tailwind.config.js postcss.config.js index.html ./
 COPY src ./src
 
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 FROM python:3.11-slim

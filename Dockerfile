@@ -1,3 +1,13 @@
+FROM node:20-alpine AS frontend
+
+WORKDIR /frontend
+
+COPY package.json vite.config.js tailwind.config.js postcss.config.js index.html ./
+COPY src ./src
+
+RUN npm install
+RUN npm run build
+
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -10,6 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app/
 COPY server/ ./server/
 COPY inference.py .
+COPY --from=frontend /frontend/app/static ./app/static
 
 # Expose port
 EXPOSE 7860

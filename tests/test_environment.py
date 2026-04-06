@@ -72,6 +72,24 @@ class TestEnvironmentReset:
         assert "layers" in obs.network_summary
         assert obs.network_summary["total_nodes"] > 0
 
+    def test_hard_noise_forms_structural_clusters(self):
+        env = TelcoRCAEnvironment("hard")
+        env.reset(seed=11)
+
+        noise_nodes = {
+            alarm.node_id for alarm in env._state.active_alarms
+            if alarm.is_noise
+        }
+
+        assert len(noise_nodes) >= 2
+        assert any(
+            (
+                env._state.nodes[node_id].parent_id in noise_nodes
+                or any(child_id in noise_nodes for child_id in env._state.nodes[node_id].children)
+            )
+            for node_id in noise_nodes
+        )
+
 
 # ================================================================== #
 #  Topology Tests                                                      #

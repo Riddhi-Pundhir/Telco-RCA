@@ -12,6 +12,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+Severity = Literal["MINOR", "WARNING", "MAJOR", "CRITICAL"]
+
+
 # ------------------------------------------------------------------ #
 #  Network topology primitives                                         #
 # ------------------------------------------------------------------ #
@@ -35,11 +38,22 @@ class Alarm(BaseModel):
     """An active alarm emitted by a network node."""
     alarm_id: str = ""
     node_id: str
-    severity: Literal["MINOR", "WARNING", "MAJOR", "CRITICAL"]
+    severity: Severity
     message: str
     layer: str
     timestamp: float = 0.0
     is_noise: bool = False  # hidden from agent, used by graders
+    # Temporal metadata (simulation time, not wall clock)
+    created_at_s: float = 0.0
+    last_updated_at_s: float = 0.0
+    age_s: float = 0.0
+    # Propagation and escalation metadata
+    depth_from_root: int = 0
+    propagation_delay_s: float = 0.0
+    escalation_count: int = 0
+    last_escalated_at_s: float | None = None
+    escalated_from: Severity | None = None
+    source: Literal["root_cause", "cascade", "noise", "evolved_noise"] = "cascade"
 
 
 # ------------------------------------------------------------------ #
@@ -56,6 +70,8 @@ class AgentObservation(BaseModel):
     episode_done: bool
     task_description: str
     network_summary: dict = Field(default_factory=dict)
+    simulation_time_s: float = 0.0
+    alarm_age_summary: dict = Field(default_factory=dict)
 
 
 class AgentAction(BaseModel):
@@ -153,5 +169,10 @@ class EpisodeState:
     false_positives: int = 0
     episode_done: bool = False
     start_time: float = 0.0
+    simulation_time_s: float = 0.0
+    last_step_advanced_s: float = 0.0
+    alarm_seq: int = 0
     topology_edges: list[tuple[str, str]] = field(default_factory=list)
     regions: dict[str, list[str]] = field(default_factory=dict)
+    # Action history for grading intelligence signals
+    action_log: list[dict] = field(default_factory=list)

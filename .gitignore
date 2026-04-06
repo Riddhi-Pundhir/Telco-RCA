@@ -1,0 +1,6 @@
+node_modules/
+dist/
+app/static/assets/
+coverage/
+.DS_Store
+

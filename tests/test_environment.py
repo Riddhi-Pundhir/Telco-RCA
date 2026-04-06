@@ -72,6 +72,18 @@ class TestEnvironmentReset:
         assert "layers" in obs.network_summary
         assert obs.network_summary["total_nodes"] > 0
 
+    def test_graph_features_in_observation(self):
+        env = TelcoRCAEnvironment("medium")
+        obs = env.reset(seed=5)
+        assert "nodes" in obs.graph
+        assert "edges" in obs.graph
+        assert obs.graph["node_count_total"] >= len(obs.graph["nodes"])
+        if obs.graph["nodes"]:
+            first_node = obs.graph["nodes"][0]
+            assert "node_id" in first_node
+            assert "layer" in first_node
+            assert "status" in first_node
+
     def test_hard_noise_forms_structural_clusters(self):
         env = TelcoRCAEnvironment("hard")
         env.reset(seed=11)

@@ -79,6 +79,9 @@ observation_space:
     - name: alarm_age_summary
       type: dict
       description: "Aggregate alarm age stats (average/oldest/newest/escalated count)"
+    - name: graph
+      type: dict
+      description: "Capped graph-native node and edge features for GNN-style agents and topology visualization"
 
 reward:
   range: [-inf, ~2.0]

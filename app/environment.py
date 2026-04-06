@@ -760,6 +760,92 @@ class TelcoRCAEnvironment:
         keep.sort(key=lambda alarm: alarm.created_at_s)
         s.active_alarms = keep
 
+    def _build_graph_observation(self) -> dict:
+        """
+        Build a compact graph view for graph-native agents and frontend tooling.
+
+        The graph is capped so large hard-mode episodes do not explode payload size.
+        """
+        s = self._state
+        if s is None:
+            return {}
+
+        node_ids = sorted(s.nodes.keys())
+        max_nodes = 150
+        included_node_ids = node_ids[:max_nodes]
+        included_node_set = set(included_node_ids)
+
+        depth_map: dict[str, int] = {}
+        queue: deque[str] = deque()
+        for node_id, node in s.nodes.items():
+            if node.parent_id is None:
+                depth_map[node_id] = 0
+                queue.append(node_id)
+
+        while queue:
+            current_id = queue.popleft()
+            current_depth = depth_map[current_id]
+            for child_id in s.nodes[current_id].children:
+                depth_map[child_id] = current_depth + 1
+                queue.append(child_id)
+
+        layer_encoding = {
+            "power_unit": 0,
+            "core_switch": 1,
+            "radio_controller": 2,
+            "cell_tower": 3,
+        }
+        status_encoding = {
+            "UP": 0,
+            "DEGRADED": 1,
+            "FAILED": 2,
+        }
+        alarming_nodes = {alarm.node_id for alarm in s.active_alarms}
+        checked_nodes = set(s.checked_nodes)
+
+        node_index = {node_id: idx for idx, node_id in enumerate(included_node_ids)}
+        graph_nodes = []
+        for node_id in included_node_ids:
+            node = s.nodes[node_id]
+            graph_nodes.append({
+                "node_id": node_id,
+                "index": node_index[node_id],
+                "layer": layer_encoding[node.layer],
+                "layer_name": node.layer,
+                "status": status_encoding[node.status],
+                "status_name": node.status,
+                "region": node.region,
+                "depth": depth_map.get(node_id, 0),
+                "degree": len(node.children),
+                "voltage_v": node.voltage,
+                "temperature_c": node.temperature_c,
+                "is_alarm_source": node_id in alarming_nodes,
+                "is_checked": node_id in checked_nodes,
+                "is_root_candidate": node.status == "FAILED" or (
+                    node.status == "DEGRADED" and len(node.children) >= 2
+                ),
+            })
+
+        graph_edges = []
+        for parent_id, child_id in s.topology_edges:
+            if parent_id not in included_node_set or child_id not in included_node_set:
+                continue
+            graph_edges.append({
+                "source": node_index[parent_id],
+                "target": node_index[child_id],
+                "source_id": parent_id,
+                "target_id": child_id,
+            })
+
+        max_edges = 300
+        return {
+            "nodes": graph_nodes,
+            "edges": graph_edges[:max_edges],
+            "node_count_total": len(s.nodes),
+            "edge_count_total": len(s.topology_edges),
+            "truncated": len(s.nodes) > max_nodes or len(s.topology_edges) > max_edges,
+        }
+
     def _generate_alarm_text(self, layer: str, severity: str) -> str:
         """Generate realistic alarm text for a given layer and severity."""
         templates = {
@@ -1033,6 +1119,7 @@ class TelcoRCAEnvironment:
             },
             "regions": region_alarm_counts,
         }
+        graph = self._build_graph_observation()
 
         return AgentObservation(
             active_alarms=s.active_alarms[:50],  # cap to avoid token explosion
@@ -1045,4 +1132,5 @@ class TelcoRCAEnvironment:
             network_summary=network_summary,
             simulation_time_s=round(now_s, 2),
             alarm_age_summary=alarm_age_summary,
+            graph=graph,
         )

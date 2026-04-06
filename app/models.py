@@ -72,6 +72,7 @@ class AgentObservation(BaseModel):
     network_summary: dict = Field(default_factory=dict)
     simulation_time_s: float = 0.0
     alarm_age_summary: dict = Field(default_factory=dict)
+    graph: dict = Field(default_factory=dict)
 
 
 class AgentAction(BaseModel):

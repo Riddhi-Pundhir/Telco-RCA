@@ -4,3 +4,8 @@ app/static/assets/
 coverage/
 .DS_Store
 
+
+.venv/
+__pycache__/
+app/__pycache__/
+tests/__pycache__/

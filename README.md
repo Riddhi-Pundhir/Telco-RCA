@@ -111,9 +111,22 @@ docker run -p 7860:7860 \
 ### 2. Standard Local Environment
 ```bash
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 7860 &
-pytest tests/ -v  # Run 47 integration tests
+npm install
+
+# Terminal 1: FastAPI backend
+uvicorn app.main:app --host 0.0.0.0 --port 7860
+
+# Terminal 2: React/Vite frontend
+npm run dev
+
+# Production frontend build served by FastAPI
+npm run build
+
+# Optional test pass
+pytest tests/ -v
 ```
+
+The Vite app builds into `app/static/`, so a production build is served directly from the FastAPI root route.
 
 ### 3. Run Baseline Agent
 We provide a compliant `inference.py` script bridging heuristics with OpenAI-spec LLM API clients:
@@ -150,5 +163,5 @@ This project was built fundamentally around the evaluation rubric:
 
 <p align="center">
   <br>
-  <i>Built with FastAPI · Pydantic · D3.js · OpenEnv</i>
+  <i>Built with FastAPI · React · Vite · Tailwind CSS · OpenEnv</i>
 </p>

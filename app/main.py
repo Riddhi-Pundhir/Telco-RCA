@@ -132,7 +132,7 @@ def step(req: StepRequest):
 def state(task: str = "easy"):
     if task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{task}'.")
-    return _get_env(task).get_state()
+    return _get_env(task).state()
 
 
 @app.post("/grade")

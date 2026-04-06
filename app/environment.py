@@ -163,7 +163,7 @@ class TelcoRCAEnvironment:
             info=info,
         )
 
-    def get_state(self) -> dict:
+    def state(self) -> dict:
         """Return full internal state for debugging / grader access."""
         if self._state is None:
             return {"status": "not_started"}

@@ -422,13 +422,13 @@ class TestStateEndpoint:
 
     def test_state_before_reset(self):
         env = TelcoRCAEnvironment("easy")
-        state = env.get_state()
+        state = env.state()
         assert state["status"] == "not_started"
 
     def test_state_after_reset(self):
         env = TelcoRCAEnvironment("easy")
         env.reset()
-        state = env.get_state()
+        state = env.state()
         assert "root_cause_id" in state
         assert state["steps_taken"] == 0
         assert "root_cause_layer" in state
@@ -441,7 +441,7 @@ class TestStateEndpoint:
         alarm = obs.active_alarms[0]
         action = AgentAction(action_type="CHECK_LOGS", target_node_id=alarm.node_id)
         env.step(action)
-        state = env.get_state()
+        state = env.state()
         assert state["steps_taken"] == 1
 
     def test_state_tracks_checked_nodes(self):
@@ -450,7 +450,7 @@ class TestStateEndpoint:
         alarm = obs.active_alarms[0]
         action = AgentAction(action_type="CHECK_LOGS", target_node_id=alarm.node_id)
         env.step(action)
-        state = env.get_state()
+        state = env.state()
         assert alarm.node_id in state["checked_nodes"]
 
 

@@ -44,8 +44,9 @@ import urllib.request
 
 def _post(path: str, body: dict) -> dict:
     data = json.dumps(body).encode()
+    url = f"{SERVER_URL.rstrip('/')}/{path.lstrip('/')}"
     req = urllib.request.Request(
-        f"{SERVER_URL}{path}",
+        url,
         data=data,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -55,7 +56,8 @@ def _post(path: str, body: dict) -> dict:
 
 
 def _get(path: str) -> dict:
-    with urllib.request.urlopen(f"{SERVER_URL}{path}", timeout=10) as r:
+    url = f"{SERVER_URL.rstrip('/')}/{path.lstrip('/')}"
+    with urllib.request.urlopen(url, timeout=10) as r:
         return json.loads(r.read())
 
 
@@ -233,25 +235,48 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
 TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44}
 
 
-def run_episode(task: str) -> dict:
-    """Run one full episode. Returns trajectory summary for grading."""
+def log_start(task: str, env: str, model: str) -> None:
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+
+def log_step(step: int, action: str, reward: float, done: bool, error: str | None) -> None:
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        flush=True,
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+
+
+def run_episode(task: str) -> float:
+    """Run one full episode and emit stdout tags for OpenEnv validation."""
     seed = TASK_SEEDS.get(task, 42)
     obs = _post("/reset", {"task": task, "seed": seed})
 
     history = []
+    rewards_list = []
     step_num = 0
     done = False
-    total_reward = 0.0
-    root_cause_fixed = False
-    correct_diagnosis = False
-    false_positives = 0
     start_time = time.time()
-
+    
     max_steps = {"easy": 15, "medium": 30, "hard": 50}.get(task, 30)
 
-    while not done and step_num < max_steps + 5:
+    log_start(task=task, env="telco-rca", model=MODEL_NAME)
+
+    info = {}
+    while not done and step_num < max_steps:
         step_num += 1
         action = llm_decide(obs, history)
+
+        # Build action string without spaces for the STDOUT log
+        action_type = action.get("action_type", "")
+        target_node = action.get("target_node_id", "")
+        action_str = f"{action_type}('{target_node}')"
 
         result = _post("/step", {"task": task, "action": action})
         reward = result["reward"]
@@ -259,104 +284,50 @@ def run_episode(task: str) -> dict:
         info = result.get("info", {})
         obs = result["observation"]
 
-        total_reward += reward
-        false_positives = obs.get("false_positives_so_far", 0)
-
-        if info.get("result") == "ROOT_CAUSE_FIXED":
-            root_cause_fixed = True
-        if info.get("result") == "CORRECT_DIAGNOSIS":
-            correct_diagnosis = True
+        rewards_list.append(reward)
+        error_msg = info.get("error")
 
         history.append({
             "step": step_num,
             "action": action,
             "reward": reward,
-            "info": info
+            "info": info,
         })
+        history.append({"action_type": action_type, "target_node_id": target_node}) # For action log in grader
 
-        log_step(task, step_num, action, reward, info, obs)
+        log_step(step=step_num, action=action_str, reward=reward, done=done, error=error_msg)
 
-    env_state = _get(f"/state?task={task}")
-    elapsed = round(time.time() - start_time, 2)
+    # Grade the episode
+    try:
+        env_state = _get(f"/state?task={task}")
+        trajectory = {
+            "task": task,
+            "steps_taken": step_num,
+            "total_reward": round(sum(rewards_list), 4),
+            "root_cause_fixed": bool(info.get("result") == "ROOT_CAUSE_FIXED"),
+            "correct_diagnosis": bool(info.get("result") == "CORRECT_DIAGNOSIS"),
+            "false_positives": obs.get("false_positives_so_far", 0),
+            "elapsed_seconds": round(time.time() - start_time, 2),
+            "root_cause_id": env_state.get("root_cause_id"),
+            "action_log": history,
+        }
+        grade_resp = _post("/grade", {"task": task, "trajectory": trajectory})
+        score = grade_resp.get("score", 0.0)
+    except Exception as e:
+        print(f"[DEBUG] Failed to grade: {e}", file=sys.stderr)
+        score = 0.0
 
-    return {
-        "task": task,
-        "steps_taken": step_num,
-        "total_reward": round(total_reward, 4),
-        "root_cause_fixed": root_cause_fixed,
-        "correct_diagnosis": correct_diagnosis,
-        "false_positives": false_positives,
-        "elapsed_seconds": elapsed,
-        "root_cause_id": env_state.get("root_cause_id"),
-        "root_cause_layer": env_state.get("root_cause_layer"),
-    }
+    success = score > 0.0
+    log_end(success=success, steps=step_num, score=score, rewards=rewards_list)
 
+    return score
 
-# ── Structured logging (mandatory hackathon format) ───────────────────
-
-def log_step(task, step_num, action, reward, info, obs):
-    payload = {
-        "task": task,
-        "step": step_num,
-        "action_type": action.get("action_type"),
-        "target_node": action.get("target_node_id"),
-        "reward": reward,
-        "done": obs.get("episode_done", False),
-        "steps_remaining": obs.get("steps_remaining"),
-        "false_positives": obs.get("false_positives_so_far", 0),
-        "info": info,
-    }
-    print(f"[STEP] {json.dumps(payload)}", flush=True)
-
-
-# ── Main ──────────────────────────────────────────────────────────────
 
 def main():
-    tasks = ["easy", "medium", "hard"]
-    results = []
-
-    print(f"[START] {json.dumps({
-        'tasks': tasks,
-        'model': MODEL_NAME,
-        'server': SERVER_URL,
-    })}", flush=True)
-
-    for task in tasks:
-        print(f"[STEP] {json.dumps({
-            'event': 'episode_start',
-            'task': task,
-        })}", flush=True)
-
-        trajectory = run_episode(task)
-
-        # Grade via server
-        grade_resp = _post("/grade", {"task": task, "trajectory": trajectory})
-        score = grade_resp["score"]
-        breakdown = grade_resp.get("breakdown", {})
-        trajectory["score"] = score
-        trajectory["breakdown"] = breakdown
-        results.append(trajectory)
-
-        print(f"[STEP] {json.dumps({
-            'event': 'episode_end',
-            'task': task,
-            'score': score,
-            'steps_taken': trajectory['steps_taken'],
-            'false_positives': trajectory['false_positives'],
-            'root_cause_id': trajectory['root_cause_id'],
-            'root_cause_layer': trajectory.get('root_cause_layer'),
-            'breakdown': breakdown,
-        })}", flush=True)
-
-    avg_score = round(sum(r["score"] for r in results) / len(results), 4)
-
-    print(f"[END] {json.dumps({
-        'results': results,
-        'average_score': avg_score,
-        'model': MODEL_NAME,
-    })}", flush=True)
-
-    return avg_score
+    # The OpenEnv evaluator typically tests a specific task by setting TASK_NAME in the environment
+    task = os.environ.get("TASK_NAME", "easy")
+    score = run_episode(task)
+    return score
 
 
 if __name__ == "__main__":

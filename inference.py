@@ -293,7 +293,6 @@ def run_episode(task: str) -> float:
             "reward": reward,
             "info": info,
         })
-        history.append({"action_type": action_type, "target_node_id": target_node}) # For action log in grader
 
         log_step(step=step_num, action=action_str, reward=reward, done=done, error=error_msg)
 

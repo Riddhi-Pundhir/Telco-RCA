@@ -99,6 +99,14 @@ HIGHEST-layer node that is actually broken. Downstream alarms are just symptoms.
 6. Use DIAGNOSE when fairly confident, RESTART only when very certain.
 7. Be EFFICIENT — minimize wasted steps. Every false restart is heavily penalized.
 
+## Important — Alarm Noise (40% of alarms are false):
+Some alarms are noise injected to mislead you. Signs of noise alarms:
+- Alarm on a leaf node (TOWER_) when its parent (RC_) shows no fault
+- Alarm severity doesn't match the node's actual voltage/status readings
+- Node appears fine on CHECK_LOGS but has a MINOR alarm
+Focus on CRITICAL alarms on higher-layer nodes (PWR_, SW_) — these are almost never noise.
+Always verify with CHECK_VOLTAGE before RESTART/DIAGNOSE.
+
 ## Response Format:
 Respond with EXACTLY one JSON object, nothing else:
 {"action_type": "CHECK_LOGS"|"CHECK_VOLTAGE"|"RESTART"|"DIAGNOSE"|"TRACE_PATH", "target_node_id": "<node_id>"}
@@ -293,6 +301,7 @@ def run_episode(task: str) -> float:
             "reward": reward,
             "info": info,
         })
+        history.append({"action_type": action_type, "target_node_id": target_node}) # For action log in grader
 
         log_step(step=step_num, action=action_str, reward=reward, done=done, error=error_msg)
 
@@ -323,10 +332,29 @@ def run_episode(task: str) -> float:
 
 
 def main():
-    # The OpenEnv evaluator typically tests a specific task by setting TASK_NAME in the environment
-    task = os.environ.get("TASK_NAME", "easy")
-    score = run_episode(task)
-    return score
+    # The OpenEnv evaluator sets TASK_NAME to test a specific task.
+    # When running locally without TASK_NAME, run all three tasks.
+    task = os.environ.get("TASK_NAME", "")
+    if task:
+        score = run_episode(task)
+        return score
+
+    # Run all tasks and report aggregate
+    scores = {}
+    for t in ["easy", "medium", "hard"]:
+        print(f"\n{'='*50}", flush=True)
+        print(f"Running task: {t.upper()}", flush=True)
+        print(f"{'='*50}", flush=True)
+        scores[t] = run_episode(t)
+        time.sleep(1)  # brief pause between tasks
+
+    print(f"\n{'='*50}", flush=True)
+    print("FINAL SCORES:", flush=True)
+    for t, s in scores.items():
+        print(f"  {t}: {s:.3f}", flush=True)
+    print(f"  average: {sum(scores.values())/len(scores):.3f}", flush=True)
+    print(f"{'='*50}", flush=True)
+    return sum(scores.values()) / len(scores)
 
 
 if __name__ == "__main__":

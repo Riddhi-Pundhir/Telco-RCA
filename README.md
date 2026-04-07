@@ -6,100 +6,143 @@ colorTo: indigo
 sdk: docker
 app_port: 7860
 ---
+
 <p align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/radio-tower.svg" width="80" alt="Telco-RCA Logo">
+  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/radio-tower.svg" width="88" alt="Telco-RCA logo">
 </p>
-<h1 align="center">Telco-RCA</h1>                  
+
+<h1 align="center">Telco-RCA</h1>
 <p align="center">
-  <strong>5G Network Root Cause Analysis Environment</strong><br>
-  <em>Team Codyy AR · April 2026</em>
+  <strong>OpenEnv telecom root-cause analysis, built for graph reasoning agents</strong>
 </p>
 
 <p align="center">
-  <a href="https://ayushman098-telco-rca.hf.space/"><img src="https://img.shields.io/badge/Live%20Dashboard-Hugging%20Face-blue?style=for-the-badge&logo=huggingface" alt="Live Dashboard"></a>
+  <a href="https://ayushman098-telco-rca.hf.space/">
+    <img src="https://img.shields.io/badge/Live%20Dashboard-Hugging%20Face-blue?style=for-the-badge&logo=huggingface" alt="Live Dashboard">
+  </a>
   <img src="https://img.shields.io/badge/Python-3.11+-black?style=for-the-badge&logo=python" alt="Python">
   <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi" alt="FastAPI">
-  <img src="https://img.shields.io/badge/OpenEnv-Compliant-success?style=for-the-badge" alt="OpenEnv">
+  <img src="https://img.shields.io/badge/OpenEnv-validated-success?style=for-the-badge" alt="OpenEnv">
 </p>
 
-<hr>
+> Telco-RCA turns a telecom outage into a reasoning problem. Each episode drops an agent into a layered 5G network where one hidden failure fans out into alarms, misleading signals, and cascading symptoms. The agent must inspect the graph, narrow the blast radius, and repair the right node with as few mistakes as possible.
 
-> **Telco-RCA** is a massive-scale reinforcement learning environment simulating cascading telecommunications hardware failures. AI agents must diagnose up to 500 nodes in physical networks, fighting through adversarial noise to find the root cause, as fast as possible, with zero false positives.
+## Why this environment exists
 
-## ✨ Highlights
+Real telecom operations are not clean puzzle boards. They are noisy, layered, and time sensitive.
+When a power unit fails, the alarms do not stay local. They ripple through switches, radio controllers, and towers across multiple regions.
+Telco-RCA models that workflow in a way that is useful for:
 
-| 🌐 **Scale & Graph Reasoning** | ⚡ **Efficiency Under Pressure** | 🛠️ **Real-World Fidelity** |
-|:---|:---|:---|
-| Navigate a dynamic 500-node Knowledge Graph mapping physical dependencies. | MTTR (Mean Time to Recovery) scoring penalizes wasted diagnostic steps. | 40% adversarial noise simulates real-world alarm fatigue and transient errors. |
-| Correlate parent-child hierarchies across 5 geographic regions. | Heavy F1 penalties for "False Positives" (dispatching crews to wrong elements). | Built strictly to the **OpenEnv** spec with deterministic seeding and Pydantic validation. |
+- diagnosing root causes in a dependency graph
+- practicing decision-making under alarm noise
+- comparing agents on efficiency, accuracy, and recovery speed
+- visualizing how an agent actually reasoned through the incident
 
-<br>
+## At a glance
 
----
+- Four difficulty tiers: `easy`, `medium`, `hard`, and `extreme`
+- Deterministic OpenEnv episodes with typed models and repeatable seeds
+- Action-based diagnosis with logs, voltage checks, tracing, restart, and final diagnosis
+- Reward shaping that balances efficiency, correctness, and false positives
+- Trajectory replay with path history, reward breakdown, and heatmap data
+- Dockerized deployment for local use and Hugging Face Spaces
 
-## 🌐 The Problem & The Cascade
+## What makes it a strong benchmark
 
-Modern 5G networks are bound by physical hierarchies. When a single **Power Unit** fails, the cascade effect triggers hundreds of simultaneous alarms across dependent regions. Engineers take hours to find the true culprit. Agents are trained to do it in seconds.
+- Real-world utility: it models a telecom network operations workflow, not a toy game
+- Task quality: the tier ladder is clean, reproducible, and gets harder in meaningful ways
+- Environment design: the observation and action spaces stay typed, bounded, and interpretable
+- Feedback quality: step rewards, terminal scores, and trajectory logs all tell part of the story
+- Deployment readiness: it runs locally, in Docker, and on Hugging Face Spaces with the same API surface
 
-```mermaid
-graph TD
-    classDef failed fill:#ef4444,stroke:#fff,stroke-width:2px,color:#fff
-    classDef alarm fill:#f59e0b,stroke:#fff,stroke-width:2px,color:#fff
-    
-    A[Power Unit]:::failed --> B[Core Switch]:::alarm
-    A --> C[Core Switch]:::alarm
-    B --> D[Radio Controller]:::alarm
-    B --> E[Radio Controller]:::alarm
-    D --> F[Cell Tower]:::alarm
-    D --> G[Cell Tower]:::alarm
-```
+## Episode flow
 
----
+An episode usually feels like this:
 
-## 🎮 Task Tiers
+1. The agent sees a storm of alarms and a compressed graph of the incident.
+2. It starts with cheap, informative actions such as `CHECK_LOGS` or `CHECK_VOLTAGE`.
+3. If the path looks suspicious, it traces upstream dependencies to find where the cascade began.
+4. It commits to a restart or diagnosis only after the graph evidence is strong enough.
+5. The trajectory panel shows the route taken, the reward earned, and the nodes that were inspected along the way.
 
-Four rigorously tuned difficulty tiers for telecom root cause analysis:
+## Incident story
 
-| Task Level | Nodes | Regions | Alarms Triggered | Noise Level | Max Actions | Description |
-|:---|:---:|:---:|:---:|:---:|:---:|:---|
-| 🟢 **Easy** | 20 | 1 | 5–20 | 0% | 15 | **Alarm Classification:** Single fault mapping to downstream towers. Tests basic topological inference. |
-| 🟡 **Medium**| 100 | 3 | 10–50 | 20% | 30 | **Multi-Alarm Correlation:** Correlate parallel failures across regional boundaries. Introduces distractor noise. |
-| 🔴 **Hard** | 500 | 5 | 50–300 | 40% | 50 | **KG Traversal:** Extensive 500-node graph tracing. The agent must distinguish critical physical hardware faults from sweeping logical cascades. |
-| ⚫ **Extreme** | 1000 | 8 | 100–600 | 60% | 75 | **Worst-Case RCA:** Deep multi-hop diagnosis under heavy noise. Tests branch pruning, signal filtering, and confident final selection. |
+<p align="center">
+  <img src="assets/readme-cascade.png" alt="Telco-RCA incident cascade figure" width="100%">
+</p>
 
-Each reset now builds the exact configured node count for the chosen task instead of using a looser lower-bound topology.
+The environment simulates a layered network where a single root fault can trigger a long alarm chain. Higher tiers add:
 
----
+- larger topologies
+- deeper dependency trees
+- more noise and false alarms
+- stricter pressure on recovery time
 
-## ⚡ Action Space
+## Task tiers
 
-Agents have access to specialized operational actions. Each action carries distinct costs and informational returns:
+| Task | Nodes | Regions | Max Steps | Noise | What it tests |
+|:---|:---:|:---:|:---:|:---:|:---|
+| `easy` | 20 | 1 | 15 | 0% | Basic fault isolation in a small network |
+| `medium` | 100 | 3 | 30 | 20% | Correlating multiple alarms across a cluster |
+| `hard` | 500 | 5 | 50 | 40% | Multi-hop reasoning across a large topology |
+| `extreme` | 1000 | 8 | 75 | 60% | Worst-case RCA under heavy noise and deep cascades |
 
-| Action Command | Cost | Operational Outcome |
-|:---|:---|:---|
-| `CHECK_LOGS` | -0.01 | Read error logs (layer, parent, textual clues). |
-| `CHECK_VOLTAGE`| -0.01 | Measure terminal voltage (Voltage drop <30V isolates hardware fault). |
-| `TRACE_PATH` | -0.01 | Map the exact upstream route from a leaf node to the core. |
-| `RESTART` | -0.01 | **CRITICAL:** Fix the network if correct. *Heavy `-0.3` deduction if wrong.* |
-| `DIAGNOSE` | -0.01 | Declare root cause safely (caps max potential reward). |
+Each reset builds the exact configured node count for the chosen tier.
 
----
+## Action space
 
-## 📈 Reward Architecture
+| Action | What it does |
+|:---|:---|
+| `CHECK_LOGS` | Inspect node logs and alarm context |
+| `CHECK_VOLTAGE` | Measure voltage for hardware diagnosis |
+| `TRACE_PATH` | Walk the dependency chain from a node upward |
+| `RESTART` | Repair the selected node if it is the true root cause |
+| `DIAGNOSE` | Declare the likely root cause without restarting it |
 
-The scoring system mirrors real-world Network Operations Center (NOC) KPIs, resulting in a strict deterministic `[0.0, 1.0]` curve:
+## Observation space
 
-$$ Score = CLAMP(Efficiency + (Speed * 0.2) - FPPenalty) $$
+Agents receive a structured observation with:
 
-- **Efficiency:** $1.0 - (steps\_taken / max\_steps)$
-- **Speed Bonus (MTTR):** Agent receives maximum bonus for returning under 300 seconds.
-- **Precision Penalty:** `-0.15` per False Positive.
+- active alarms and total alarm count
+- steps remaining and episode completion state
+- checked nodes and false positives so far
+- network summary by layer and region
+- simulation time and alarm age statistics
+- a graph snapshot for graph-aware policies and visualization
 
----
+## Reward and grading
 
-## 🚀 Quick Start
+The environment gives step-level shaping, while the final grade normalizes the run into a score between `0.0` and `1.0`.
 
-### 1. Run the Dashboard & API (Docker)
+Core signals:
+
+- fewer steps is better
+- faster recovery is better
+- fewer false positives is better
+- correct diagnosis and repair matter more than brute-force exploration
+
+The grading layer also tracks:
+
+- root-cause identification quality
+- MTTR-style recovery speed
+- false-positive penalties
+- checked node and layer coverage
+
+## Trajectory view
+
+Telco-RCA includes a trajectory endpoint and dashboard panel that show how the agent solved the incident:
+
+- agent path through the graph
+- actions taken with timing
+- reward breakdown per step
+- heatmap of checked nodes
+- replay scrubber for stepping through the episode
+
+This is useful when you want to understand not just whether an agent succeeded, but how it reasoned.
+
+## Quick start
+
+### Docker
 
 ```bash
 docker build -t telco-rca .
@@ -111,78 +154,98 @@ docker run -p 7860:7860 \
   -e INTERNAL_API_TOKEN=change-me \
   telco-rca
 ```
-*Visit `http://localhost:7860` for the animated web dashboard.*
 
-### 1a. Hugging Face Space Variables / Secrets
+Open `http://localhost:7860` after the container starts.
 
-Configure these in the Space settings instead of committing them:
+### Local development
 
-- `HF_TOKEN`: provider token used by `inference.py`
-- `OPENAI_API_KEY`: accepted as a fallback alias by `inference.py`
-- `API_BASE_URL`: upstream LLM endpoint
-- `MODEL_NAME`: model identifier
-- `PUBLIC_BASE_URL`: your public Space URL, for example `https://ayushman098-telco-rca.hf.space`
-- `INTERNAL_API_TOKEN`: optional token for `/state/internal`
-- `ALLOWED_ORIGINS`: optional comma-separated override for CORS if you want to replace the default local + `*.hf.space` policy
-
-The React frontend uses same-origin API calls by default, so the Space does not need a separate frontend API base URL.
-
-The container healthcheck now uses `GET /ready`, which only flips healthy after the UI assets and task registry are confirmed.
-
-### 2. Standard Local Environment
 ```bash
 pip install -r requirements.txt
 npm ci
 
-# Terminal 1: FastAPI backend
+# Terminal 1
 uvicorn app.main:app --host 0.0.0.0 --port 7860
 
-# Terminal 2: React/Vite frontend
+# Terminal 2
 npm run dev
 
-# Production frontend build served by FastAPI
+# Production frontend build
 npm run build
-
-# Optional test pass
-pytest tests/ -v
 ```
 
-The Vite app builds into `app/static/`, so a production build is served directly from the FastAPI root route.
+The built frontend is served from `app/static/` by FastAPI.
 
-### 3. Run Baseline Agent
-We provide a compliant `inference.py` script bridging heuristics with OpenAI-spec LLM API clients. It accepts either `HF_TOKEN` or `OPENAI_API_KEY` and emits structured `[START]`, `[STEP]`, and `[END]` JSON logs:
+### Baseline agent
+
+`inference.py` runs a reproducible baseline and accepts either `HF_TOKEN` or `OPENAI_API_KEY`.
+
 ```bash
-SERVER_URL=https://ayushman098-telco-rca.hf.space \
-python inference.py
+SERVER_URL=https://ayushman098-telco-rca.hf.space python inference.py
 ```
 
-### 4. Run the Benchmark Sweep
-The repo also includes `run_baseline.sh`, which executes the baseline across every task multiple times, then summarizes mean/std score plus MTTR:
+### Benchmark sweep
+
+`run_baseline.sh` runs multiple episodes per tier and writes a summary with mean score, standard deviation, and MTTR-style timing.
+
 ```bash
 chmod +x run_baseline.sh
 ./run_baseline.sh --episodes 5 --output artifacts/baseline_report.txt
 ```
 
-The script writes a clean report and keeps a format example in:
-- [`artifacts/baseline_report_example.txt`](artifacts/baseline_report_example.txt)
+An example output format is stored in:
 
----
+- `artifacts/baseline_report_example.txt`
 
-## 📡 Base API Reference
+## Hugging Face Space configuration
 
-| Verb | Path | Output Signature |
+Set these secrets in the Space settings:
+
+- `HF_TOKEN` or `OPENAI_API_KEY`
+- `API_BASE_URL`
+- `MODEL_NAME`
+- `PUBLIC_BASE_URL`
+- `INTERNAL_API_TOKEN` if you want to enable `/state/internal`
+- `ALLOWED_ORIGINS` if you want to override the default CORS policy
+
+The Space container now exposes a readiness route at `GET /ready`, and the Docker healthcheck uses that endpoint.
+
+## API reference
+
+| Method | Path | Purpose |
 |:---|:---|:---|
-| `GET` | `/health` | Liveness constraint & versioning |
-| `GET` | `/ready` | Readiness check used by the Docker healthcheck and HF Space boot path |
-| `GET` | `/tasks` | Detailed metadata for all defined topology tasks |
-| `POST`| `/reset` | Bootstraps a chaotic graph state: `{"task": "hard", "seed": 42}` |
-| `POST`| `/step` | Evaluates diagnostics: `{"task": "hard", "action": {...}}` |
-| `GET` | `/state` | Safe runtime state for the dashboard and grading inputs; does not expose the hidden root cause |
-| `GET` | `/trajectory` | Structured trajectory data for the solved path, timing, and reward breakdown |
-| `GET` | `/state/internal` | Optional token-protected debug state; send `X-Admin-Token` |
-| `POST`| `/grade` | Calculates explicit precision/recall F1 scores mapped to MTTR |
+| `GET` | `/health` | Liveness and version check |
+| `GET` | `/ready` | Readiness check for the UI assets and task registry |
+| `GET` | `/tasks` | List all available task tiers |
+| `POST` | `/reset` | Start a new episode |
+| `POST` | `/step` | Apply an agent action |
+| `GET` | `/state` | Safe runtime state for the UI and agents |
+| `GET` | `/trajectory` | Step-by-step replay, reward series, and node heatmap |
+| `GET` | `/state/internal` | Token-protected debug state |
+| `POST` | `/grade` | Score a full trajectory |
 
-<p align="center">
-  <br>
-  <i>Built by Riddhi Pundhir & Ayushman Sahoo & Saranya Uduthuri</i>
-</p>
+## Project structure
+
+```text
+.
+├── app/                  # FastAPI backend, environment, models, graders
+├── src/                  # React dashboard and visualization components
+├── inference.py          # Baseline agent runner
+├── run_baseline.sh       # Multi-episode benchmark sweep
+├── openenv.yaml          # OpenEnv manifest
+├── Dockerfile            # Space-ready container build
+└── artifacts/            # Reproducibility and benchmark logs
+```
+
+## Validation
+
+The repository includes:
+
+- OpenEnv manifest metadata in `openenv.yaml`
+- typed Pydantic models for observations, actions, and trajectories
+- a Docker build that serves both API and frontend from one container
+- a live dashboard on Hugging Face Spaces
+- reproducibility logs and benchmark outputs under `artifacts/`
+
+## License
+
+MIT

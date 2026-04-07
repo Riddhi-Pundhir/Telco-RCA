@@ -1,7 +1,7 @@
 """
 inference.py — Telco-RCA baseline inference script.
 
-Runs a heuristic + LLM agent against all three tasks (easy, medium, hard)
+Runs a heuristic + LLM agent against all configured tasks
 and emits structured [START] / [STEP] / [END] logs as required by the spec.
 
 The agent uses a sophisticated top-down diagnosis strategy:
@@ -16,12 +16,16 @@ Usage:
     python inference.py
 
 Environment variables:
-    API_BASE_URL      LLM endpoint  (default: https://api.openai.com/v1)
-    MODEL_NAME        Model string  (default: claude-sonnet-4-20250514)
-    HF_TOKEN          API key alias
-    OPENAI_API_KEY    API key alias
-    SERVER_URL        Environment server URL (default: http://localhost:7860)
+    API_BASE_URL       LLM endpoint  (default: https://api.openai.com/v1)
+    MODEL_NAME         Model string  (default: claude-sonnet-4-20250514)
+    HF_TOKEN           API key alias
+    OPENAI_API_KEY     API key alias
+    SERVER_URL         Environment server URL (default: http://localhost:7860)
     INTERNAL_API_TOKEN Optional token for /state/internal
+    TASK_NAME          Optional single task override
+    TASKS              Optional comma-separated task list
+    TASK_SEED          Optional per-run seed override
+    EPISODE_SEED       Optional per-run seed override
 """
 
 import json
@@ -252,7 +256,42 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
 
 
 # Fixed seeds for reproducible baseline runs
-TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44}
+TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44, "extreme": 45}
+DEFAULT_TASK_MAX_STEPS = {"easy": 15, "medium": 30, "hard": 50, "extreme": 75}
+_TASK_CATALOG_CACHE: dict[str, dict] | None = None
+
+
+def _task_seed(task: str) -> int:
+    override = os.environ.get("EPISODE_SEED") or os.environ.get("TASK_SEED")
+    if override:
+        try:
+            return int(override)
+        except ValueError:
+            pass
+    return TASK_SEEDS.get(task, 42)
+
+
+def _task_max_steps(task: str) -> int:
+    if task in DEFAULT_TASK_MAX_STEPS:
+        return DEFAULT_TASK_MAX_STEPS[task]
+
+    global _TASK_CATALOG_CACHE
+    if _TASK_CATALOG_CACHE is None:
+        try:
+            catalog = _get("/tasks").get("tasks", [])
+            _TASK_CATALOG_CACHE = {
+                entry["name"]: entry
+                for entry in catalog
+                if isinstance(entry, dict) and entry.get("name")
+            }
+        except Exception:
+            _TASK_CATALOG_CACHE = {}
+
+    entry = _TASK_CATALOG_CACHE.get(task, {})
+    try:
+        return int(entry.get("max_steps", 30))
+    except (TypeError, ValueError):
+        return 30
 
 
 def emit(tag: str, payload: dict) -> None:
@@ -273,7 +312,7 @@ def log_end(payload: dict) -> None:
 
 def run_episode(task: str) -> dict:
     """Run one full episode and emit stdout tags for OpenEnv validation."""
-    seed = TASK_SEEDS.get(task, 42)
+    seed = _task_seed(task)
     obs = _post("/reset", {"task": task, "seed": seed})
 
     prompt_history = []
@@ -281,7 +320,7 @@ def run_episode(task: str) -> dict:
     step_num = 0
     done = False
     start_time = time.time()
-    max_steps = {"easy": 15, "medium": 30, "hard": 50}.get(task, 30)
+    max_steps = _task_max_steps(task)
 
     log_step({"event": "episode_start", "task": task})
 
@@ -433,12 +472,15 @@ def run_episode(task: str) -> dict:
 
 def main():
     # The OpenEnv evaluator sets TASK_NAME to test a specific task.
-    # When running locally without TASK_NAME, run all three tasks.
+    # When running locally without TASK_NAME, run all four tasks.
     task = os.environ.get("TASK_NAME", "")
+    task_list = os.environ.get("TASKS", "").strip()
     if task:
         tasks = [task]
+    elif task_list:
+        tasks = [item.strip() for item in task_list.split(",") if item.strip()]
     else:
-        tasks = ["easy", "medium", "hard"]
+        tasks = ["easy", "medium", "hard", "extreme"]
 
     log_start(tasks)
 

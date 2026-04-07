@@ -180,5 +180,5 @@ The script writes a clean report and keeps a format example in:
 
 <p align="center">
   <br>
-  <i>Built with FastAPI · React · Vite · Tailwind CSS · OpenEnv</i>
+  <i>Built by Riddhi Pundhir & Ayushman Sahoo & Saranya Uduthuri</i>
 </p>

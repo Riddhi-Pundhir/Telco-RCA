@@ -12,7 +12,7 @@ app_port: 7860
 <h1 align="center">Telco-RCA</h1>                  
 <p align="center">
   <strong>5G Network Root Cause Analysis Environment</strong><br>
-  <em>OpenEnv Hackathon Submission · Team Codyy AR · April 2026</em>
+  <em>Team Codyy AR · April 2026</em>
 </p>
 
 <p align="center">
@@ -56,9 +56,9 @@ graph TD
 
 ---
 
-## 🎮 Evaluation Tasks
+## 🎮 Task Tiers
 
-Four rigorously tuned difficulty tiers to test frontier model graph-reasoning:
+Four rigorously tuned difficulty tiers for telecom root cause analysis:
 
 | Task Level | Nodes | Regions | Alarms Triggered | Noise Level | Max Actions | Description |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
@@ -161,7 +161,7 @@ chmod +x run_baseline.sh
 ./run_baseline.sh --episodes 5 --output artifacts/baseline_report.txt
 ```
 
-The script writes a clean evaluator-friendly report and keeps a format example in:
+The script writes a clean report and keeps a format example in:
 - [`artifacts/baseline_report_example.txt`](artifacts/baseline_report_example.txt)
 
 ---
@@ -177,20 +177,6 @@ The script writes a clean evaluator-friendly report and keeps a format example i
 | `GET` | `/state` | Safe runtime state for the dashboard and grading inputs; does not expose the hidden root cause |
 | `GET` | `/state/internal` | Optional token-protected debug state; send `X-Admin-Token` |
 | `POST`| `/grade` | Calculates explicit precision/recall F1 scores mapped to MTTR |
-
----
-
-## 🏆 Hackathon Rubric Compliance Mapping
-
-This project was built fundamentally around the evaluation rubric:
-
-| Evaluator Criterion (Weight) | Evidence of Compliance |
-|:---:|:---|
-| **Real-world Utility (30%)** | Provides exactly the topology simulations telecom operators use to test alarm correlation engines. Fills a major gap in graph-based RL endpoints. |
-| **Task & Grader Quality (25%)** | 4 explicitly tiered tasks. `app/graders.py` limits to rigid `[0.0, 1.0]` values using distinct MTTR and penalty arrays. Asserts deterministic states. |
-| **Environment Design (20%)** | Pydantic v2 handles distinct action spaces. Reset boundaries cleanly wipe global state arrays. |
-| **Code Quality / OpenEnv (15%)**| `openenv validate .` explicitly passes. The environment runs a massive fast-loading graph within a standard Python Docker container under 100mb RAM. <br> Baseline inference emits rigid `[START]/[STEP]/[END]` standards natively. |
-| **Creativity & Novelty (10%)** | Unique custom Web Dashboard mounted in FastAPI root; entirely novel physical failure domain. |
 
 <p align="center">
   <br>

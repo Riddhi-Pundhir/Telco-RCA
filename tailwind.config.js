@@ -3,27 +3,36 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        body: ['"Manrope"', "sans-serif"],
+        display: ['"Cormorant Garamond"', "serif"],
+      },
       colors: {
-        espresso: "#452829",
-        slate: "#57595B",
-        sand: "#E8D1C5",
-        cream: "#F3E8DF",
-        healthy: "#5DD39E",
-        suspect: "#F2B950",
-        failure: "#F56A6A",
-        signal: "#D7B79B",
+        espresso: "#45171B",
+        ember: "#2A0D10",
+        claret: "#5A2026",
+        slate: "#6E5D59",
+        sand: "#D8D1C2",
+        cream: "#F4EFE7",
+        parchment: "#E8E1D5",
+        healthy: "#6E8E73",
+        suspect: "#C7904D",
+        failure: "#B45C64",
+        signal: "#B49A8D",
+        bronze: "#B88A6A",
       },
       boxShadow: {
-        panel: "0 24px 80px rgba(17, 7, 5, 0.35)",
-        glow: "0 0 0 1px rgba(243, 232, 223, 0.08), 0 18px 60px rgba(17, 7, 5, 0.28)",
-        alarm: "0 0 0 1px rgba(245, 106, 106, 0.25), 0 0 30px rgba(245, 106, 106, 0.18)",
+        panel: "0 26px 90px rgba(16, 5, 7, 0.42)",
+        glow: "0 0 0 1px rgba(244, 239, 231, 0.06), 0 24px 70px rgba(16, 5, 7, 0.28)",
+        alarm: "0 0 0 1px rgba(180, 92, 100, 0.28), 0 0 34px rgba(180, 92, 100, 0.16)",
+        soft: "0 18px 46px rgba(23, 8, 10, 0.2)",
       },
       borderRadius: {
         "4xl": "2rem",
       },
       backgroundImage: {
         mesh:
-          "radial-gradient(circle at top left, rgba(232, 209, 197, 0.24), transparent 32%), radial-gradient(circle at 80% 0%, rgba(215, 183, 155, 0.22), transparent 28%), radial-gradient(circle at 50% 100%, rgba(87, 89, 91, 0.35), transparent 40%)",
+          "radial-gradient(circle at 12% 12%, rgba(216, 209, 194, 0.2), transparent 26%), radial-gradient(circle at 84% 10%, rgba(90, 32, 38, 0.28), transparent 30%), radial-gradient(circle at 50% 100%, rgba(42, 13, 16, 0.48), transparent 44%)",
       },
       animation: {
         float: "float 8s ease-in-out infinite",
@@ -31,6 +40,9 @@ export default {
         panelIn: "panelIn 0.65s ease-out",
         sweep: "sweep 2s linear infinite",
         flash: "flash 1.35s ease-in-out infinite",
+        drift: "drift 14s ease-in-out infinite",
+        halo: "halo 4.2s ease-in-out infinite",
+        shimmer: "shimmer 7s linear infinite",
       },
       keyframes: {
         float: {
@@ -53,9 +65,20 @@ export default {
           "0%, 100%": { boxShadow: "0 0 0 rgba(245, 106, 106, 0)" },
           "50%": { boxShadow: "0 0 24px rgba(245, 106, 106, 0.35)" },
         },
+        drift: {
+          "0%, 100%": { transform: "translate3d(0px, 0px, 0) scale(1)" },
+          "50%": { transform: "translate3d(12px, -14px, 0) scale(1.04)" },
+        },
+        halo: {
+          "0%, 100%": { opacity: "0.22", transform: "scale(0.96)" },
+          "50%": { opacity: "0.48", transform: "scale(1.04)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
     },
   },
   plugins: [],
 };
-

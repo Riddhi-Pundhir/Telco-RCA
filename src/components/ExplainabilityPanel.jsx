@@ -18,12 +18,12 @@ export function ExplainabilityPanel({ explainability }) {
 
       <div className="grid flex-1 gap-4 p-5 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-4">
-          <div className="rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+          <div className="surface-card">
             <div className="flex items-center gap-3">
-              <BrainCircuit className="h-5 w-5 text-sand" />
+              <BrainCircuit className="h-5 w-5 text-bronze" />
               <div>
                 <p className="soft-label">Primary suspect</p>
-                <p className="mt-1 text-xl font-semibold text-cream">
+                <p className="mt-1 font-display text-[1.9rem] font-semibold text-cream">
                   {explainability?.primaryCandidate?.nodeId ?? "Awaiting topology"}
                 </p>
               </div>
@@ -31,11 +31,11 @@ export function ExplainabilityPanel({ explainability }) {
             <p className="mt-3 text-sm text-cream/68">
               {explainability?.primaryCandidate
                 ? `${formatLayerLabel(explainability.primaryCandidate.node?.layer_name)} in ${explainability.primaryCandidate.region}`
-                : "Load a simulation to start RCA scoring."}
+              : "Load a simulation to start RCA scoring."}
             </p>
           </div>
 
-          <div className="rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+          <div className="surface-card">
             <div className="flex items-center gap-3">
               <GitBranchPlus className="h-5 w-5 text-suspect" />
               <div>
@@ -49,7 +49,7 @@ export function ExplainabilityPanel({ explainability }) {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+          <div className="surface-card">
             <div className="flex items-center gap-3">
               <Radar className="h-5 w-5 text-healthy" />
               <div>
@@ -67,9 +67,9 @@ export function ExplainabilityPanel({ explainability }) {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+          <div className="surface-card">
             <div className="flex items-center gap-3">
-              <MapPinned className="h-5 w-5 text-sand" />
+              <MapPinned className="h-5 w-5 text-bronze" />
               <div>
                 <p className="soft-label">Impacted regions</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -86,7 +86,7 @@ export function ExplainabilityPanel({ explainability }) {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+          <div className="surface-card">
             <p className="soft-label">Top candidates</p>
             <div className="mt-4 space-y-3">
               {(explainability?.candidates ?? []).map((candidate, index) => (
@@ -95,11 +95,11 @@ export function ExplainabilityPanel({ explainability }) {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.08 }}
-                  className="rounded-[1.1rem] border border-cream/10 bg-cream/5 p-3"
+                  className="rounded-[1.2rem] border border-cream/10 bg-cream/[0.06] p-3"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-cream">{candidate.nodeId}</p>
+                      <p className="font-display text-2xl font-semibold text-cream">{candidate.nodeId}</p>
                       <p className="text-xs uppercase tracking-[0.22em] text-sand/65">
                         {candidate.label}
                       </p>
@@ -118,4 +118,3 @@ export function ExplainabilityPanel({ explainability }) {
     </section>
   );
 }
-

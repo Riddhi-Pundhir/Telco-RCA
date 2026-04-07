@@ -20,6 +20,13 @@ export const TASK_METADATA = {
     operatorStory: "Multi-region graph traversal",
     accent: "from-failure/30 via-sand/10 to-transparent",
   },
+  extreme: {
+    index: 4,
+    title: "Extreme Cascade",
+    shortLabel: "Extreme",
+    operatorStory: "Worst-case multi-hop recovery under heavy noise",
+    accent: "from-failure/40 via-bronze/10 to-transparent",
+  },
 };
 
 export const ACTION_LABELS = {
@@ -85,4 +92,3 @@ export const MANUAL_ACTIONS = [
   "RESTART",
   "DIAGNOSE",
 ];
-

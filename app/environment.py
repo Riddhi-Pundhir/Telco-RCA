@@ -33,7 +33,8 @@ from collections import deque, Counter
 
 from .models import (
     NetworkNode, Alarm, AgentObservation, AgentAction,
-    StepResult, EpisodeState, TaskConfig, TASK_CONFIGS, Severity
+    StepResult, EpisodeState, TaskConfig, TASK_CONFIGS, Severity,
+    TrajectoryNodeHeatmap, TrajectoryResponse, TrajectoryStep,
 )
 
 
@@ -113,6 +114,7 @@ class TelcoRCAEnvironment:
             alarm_seq=len(initial_alarms),
             topology_edges=edges,
             regions=regions,
+            trajectory_log=[],
         )
         self._start_time = time.time()
         return self._build_observation()
@@ -130,12 +132,13 @@ class TelcoRCAEnvironment:
         info: dict[str, Any] = {}
 
         # Record action for grading intelligence signals
-        s.action_log.append({
+        action_entry = {
             "step": s.steps_taken,
             "action_type": action.action_type,
             "target_node_id": action.target_node_id,
             "simulation_time_s": round(s.simulation_time_s, 2),
-        })
+        }
+        s.action_log.append(action_entry)
         advanced_s = self._advance_simulation_clock(action.action_type)
         s.last_step_advanced_s = advanced_s
 
@@ -152,6 +155,7 @@ class TelcoRCAEnvironment:
         else:
             reward = -0.1
             info["error"] = f"Unknown action: {action.action_type}"
+            info["reward_breakdown"] = {"invalid_action_penalty": round(reward, 4)}
 
         # Evolve alarms over simulated time (escalation/noise lifecycle).
         if not s.episode_done:
@@ -163,6 +167,16 @@ class TelcoRCAEnvironment:
             info["termination"] = "max_steps_exceeded"
         info["simulation_time_s"] = round(s.simulation_time_s, 2)
         info["time_advanced_s"] = round(advanced_s, 2)
+
+        action_entry.update(
+            {
+                "reward": round(reward, 4),
+                "result": info.get("result"),
+                "time_advanced_s": round(advanced_s, 2),
+                "reward_breakdown": info.get("reward_breakdown", {}),
+            }
+        )
+        self._append_trajectory_step(action, reward, info, advanced_s)
 
         obs = self._build_observation()
         return StepResult(
@@ -215,6 +229,175 @@ class TelcoRCAEnvironment:
             payload["root_cause_layer"] = s.nodes[s.root_cause_id].layer
 
         return payload
+
+    def trajectory(self) -> dict:
+        """Return a structured trajectory payload for visualization."""
+        if self._state is None:
+            return {"status": "not_started"}
+
+        s = self._state
+        checked_layers = [
+            s.nodes[nid].layer for nid in s.checked_nodes if nid in s.nodes
+        ]
+
+        node_visit_weights: Counter[str] = Counter()
+        node_first_seen: dict[str, int] = {}
+        node_last_seen: dict[str, int] = {}
+        path_nodes: list[str] = []
+        seen_path_nodes: set[str] = set()
+        path_segments: list[dict[str, Any]] = []
+        reward_series: list[dict[str, Any]] = []
+        step_log: list[TrajectoryStep] = []
+        cumulative_reward = 0.0
+
+        for entry in s.trajectory_log:
+            step = int(entry.get("step", 0))
+            reward = float(entry.get("reward", 0.0))
+            cumulative_reward += reward
+
+            raw_path = entry.get("path_nodes") or [entry.get("target_node_id")]
+            normalized_path = [node_id for node_id in raw_path if node_id in s.nodes]
+
+            step_log.append(TrajectoryStep(
+                step=step,
+                action_type=entry.get("action_type", "CHECK_LOGS"),
+                target_node_id=entry.get("target_node_id", ""),
+                target_layer=entry.get("target_layer"),
+                target_region=entry.get("target_region"),
+                simulation_time_s=float(entry.get("simulation_time_s", 0.0)),
+                time_advanced_s=float(entry.get("time_advanced_s", 0.0)),
+                reward=reward,
+                reward_breakdown=entry.get("reward_breakdown", {}),
+                result=entry.get("result"),
+                path_nodes=normalized_path,
+                false_positives_total=int(entry.get("false_positives_total", 0)),
+                done=bool(entry.get("done", False)),
+            ))
+
+            reward_series.append({
+                "step": step,
+                "action_type": entry.get("action_type", ""),
+                "target_node_id": entry.get("target_node_id", ""),
+                "simulation_time_s": float(entry.get("simulation_time_s", 0.0)),
+                "time_advanced_s": float(entry.get("time_advanced_s", 0.0)),
+                "reward": round(reward, 4),
+                "cumulative_reward": round(cumulative_reward, 4),
+                "reward_breakdown": entry.get("reward_breakdown", {}),
+                "result": entry.get("result"),
+            })
+
+            if normalized_path and (len(normalized_path) > 1 or entry.get("action_type") == "TRACE_PATH"):
+                path_segments.append({
+                    "step": step,
+                    "action_type": entry.get("action_type", ""),
+                    "target_node_id": entry.get("target_node_id", ""),
+                    "nodes": normalized_path,
+                    "simulation_time_s": float(entry.get("simulation_time_s", 0.0)),
+                    "time_advanced_s": float(entry.get("time_advanced_s", 0.0)),
+                    "reward": round(reward, 4),
+                })
+
+            for index, node_id in enumerate(normalized_path):
+                node_visit_weights[node_id] += 1.0 if index == 0 else 0.65
+                node_first_seen.setdefault(node_id, step)
+                node_last_seen[node_id] = step
+                if node_id not in seen_path_nodes:
+                    seen_path_nodes.add(node_id)
+                    path_nodes.append(node_id)
+
+        if not path_nodes:
+            path_nodes = list(s.checked_nodes)
+
+        alarm_source_ids = {alarm.node_id for alarm in s.active_alarms}
+        if s.root_cause_id in s.nodes:
+            alarm_source_ids.add(s.root_cause_id)
+
+        heatmap: list[TrajectoryNodeHeatmap] = []
+        total_steps = max(1, len(s.trajectory_log))
+        for node_id, visit_score in sorted(node_visit_weights.items(), key=lambda item: (-item[1], item[0])):
+            node = s.nodes[node_id]
+            heatmap.append(TrajectoryNodeHeatmap(
+                node_id=node_id,
+                layer=node.layer,
+                region=node.region,
+                status_name=node.status,
+                visit_count=round(visit_score, 2),
+                first_seen_step=node_first_seen.get(node_id, 0),
+                last_seen_step=node_last_seen.get(node_id, 0),
+                is_checked=node_id in s.checked_nodes,
+                is_alarm_source=node_id in alarm_source_ids,
+                intensity=round(min(1.0, visit_score / total_steps), 4),
+            ))
+
+        reward_breakdown_summary: dict[str, float] = {}
+        for entry in s.trajectory_log:
+            for key, value in (entry.get("reward_breakdown") or {}).items():
+                if isinstance(value, (int, float)):
+                    reward_breakdown_summary[key] = round(
+                        reward_breakdown_summary.get(key, 0.0) + float(value),
+                        4,
+                    )
+
+        total_reward = round(sum(item.reward for item in step_log), 4)
+        payload = TrajectoryResponse(
+            task=self.task_name,
+            episode_done=s.episode_done,
+            total_steps=s.steps_taken,
+            elapsed_seconds=round(time.time() - s.start_time, 2),
+            simulation_time_s=round(s.simulation_time_s, 2),
+            total_reward=total_reward,
+            unique_nodes_checked=len(set(s.checked_nodes)),
+            unique_layers_checked=len(set(checked_layers)),
+            path_nodes=path_nodes,
+            path_segments=path_segments,
+            reward_series=reward_series,
+            step_log=step_log,
+            heatmap=heatmap,
+            graph=self._build_graph_observation(),
+            summary={
+                "false_positives": s.false_positives,
+                "root_cause_fixed": s.root_cause_id in s.restarted_nodes,
+                "correct_diagnosis": s.root_cause_id in s.diagnosed_nodes,
+                "checked_nodes": list(s.checked_nodes),
+                "checked_layers": checked_layers,
+                "reward_breakdown_summary": reward_breakdown_summary,
+                "path_segment_count": len(path_segments),
+                "heatmap_size": len(heatmap),
+            },
+        )
+        return payload.model_dump()
+
+    def _append_trajectory_step(self, action: AgentAction, reward: float, info: dict, advanced_s: float):
+        """Persist a structured step record for the trajectory visualization endpoint."""
+        s = self._state
+        if s is None:
+            return
+
+        node = s.nodes.get(action.target_node_id)
+        raw_path = info.get("path_to_root") or []
+        path_nodes = [
+            item.get("node_id") if isinstance(item, dict) else item
+            for item in raw_path
+            if item
+        ]
+        if not path_nodes and action.target_node_id in s.nodes:
+            path_nodes = [action.target_node_id]
+
+        s.trajectory_log.append({
+            "step": s.steps_taken,
+            "action_type": action.action_type,
+            "target_node_id": action.target_node_id,
+            "target_layer": node.layer if node else None,
+            "target_region": node.region if node else None,
+            "simulation_time_s": round(s.simulation_time_s, 2),
+            "time_advanced_s": round(advanced_s, 2),
+            "reward": round(reward, 4),
+            "reward_breakdown": info.get("reward_breakdown", {"total": round(reward, 4)}),
+            "result": info.get("result"),
+            "path_nodes": path_nodes,
+            "false_positives_total": s.false_positives,
+            "done": s.episode_done,
+        })
 
     # ------------------------------------------------------------------ #
     #  Topology & failure simulation                                       #
@@ -1011,6 +1194,7 @@ class TelcoRCAEnvironment:
         if node_id == s.root_cause_id:
             log_data["log"] += " [KERNEL PANIC] System halted. Manual intervention required."
 
+        log_data["reward_breakdown"] = {"analysis_reward": 0.02}
         return 0.02, log_data
 
     def _handle_voltage(self, node_id: str) -> tuple[float, dict]:
@@ -1031,6 +1215,7 @@ class TelcoRCAEnvironment:
             ),
             "layer": node.layer,
             "threshold": "48V nominal, <30V = hardware fault",
+            "reward_breakdown": {"diagnostic_reward": 0.03},
         }
 
     def _handle_trace_path(self, node_id: str) -> tuple[float, dict]:
@@ -1066,6 +1251,10 @@ class TelcoRCAEnvironment:
             "path_to_root": path,
             "direct_children": children_info,
             "depth": len(path) - 1,
+            "path_nodes": [entry["node_id"] for entry in path],
+            "reward_breakdown": {
+                "path_insight_reward": 0.02,
+            },
         }
 
     def _handle_restart(self, node_id: str) -> tuple[float, dict]:
@@ -1079,6 +1268,7 @@ class TelcoRCAEnvironment:
 
         if node_id == s.root_cause_id:
             # ✅ Correct fix — clear all downstream alarms
+            cleared_count = len(s.active_alarms)
             self._clear_downstream(node_id)
             elapsed = round(s.simulation_time_s, 2)
             mttr_bonus = max(0.0, 1.0 - elapsed / 300)  # bonus for speed
@@ -1092,7 +1282,12 @@ class TelcoRCAEnvironment:
                 "mttr_seconds": elapsed,
                 "false_positives": s.false_positives,
                 "final_reward": round(reward, 4),
-                "alarms_cleared": len(s.active_alarms),
+                "alarms_cleared": cleared_count,
+                "reward_breakdown": {
+                    "resolution_reward": 1.0,
+                    "mttr_bonus": round(mttr_bonus, 4),
+                    "false_positive_penalty": round(-fp_penalty, 4),
+                },
             }
         else:
             # ❌ Wrong node restarted — false positive penalty
@@ -1102,6 +1297,9 @@ class TelcoRCAEnvironment:
                 "restarted": node_id,
                 "restarted_layer": node.layer,
                 "false_positives_total": s.false_positives,
+                "reward_breakdown": {
+                    "false_positive_penalty": -0.3,
+                },
                 "note": (
                     "Node restarted but alarms persist. Network still degraded. "
                     "A field crew was dispatched to the wrong location."
@@ -1125,6 +1323,11 @@ class TelcoRCAEnvironment:
                 "root_cause_layer": s.nodes[node_id].layer,
                 "mttr_seconds": elapsed,
                 "false_positives": s.false_positives,
+                "reward_breakdown": {
+                    "resolution_reward": 0.8,
+                    "mttr_bonus": round(mttr_bonus * 0.5, 4),
+                    "false_positive_penalty": round(-fp_penalty, 4),
+                },
                 "note": "Correct root cause identified. Maintenance scheduled.",
             }
         else:
@@ -1136,6 +1339,9 @@ class TelcoRCAEnvironment:
                     node_id="?", layer="cell_tower"
                 )).layer if node_id in s.nodes else "unknown",
                 "false_positives_total": s.false_positives,
+                "reward_breakdown": {
+                    "false_positive_penalty": -0.2,
+                },
             }
 
     def _clear_downstream(self, node_id: str):

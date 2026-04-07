@@ -47,12 +47,38 @@ function isPropagationEdge(edge, propagationPath) {
   return false;
 }
 
-export function buildFlowElements({ graph, activeAlarms = [], explainability, selectedNodeId, state }) {
+function buildTrajectoryOverlay(trajectory = {}) {
+  const heatmap = trajectory?.heatmap ?? [];
+  const pathNodes = trajectory?.path_nodes ?? [];
+  const nodeHeatmap = new Map();
+  const pathOrder = new Map();
+  const edgeSet = new Set();
+
+  heatmap.forEach((entry) => {
+    nodeHeatmap.set(entry.node_id, entry);
+  });
+
+  pathNodes.forEach((nodeId, index) => {
+    pathOrder.set(nodeId, index);
+  });
+
+  for (const segment of trajectory?.path_segments ?? []) {
+    const nodes = segment?.nodes ?? [];
+    for (let index = 0; index < nodes.length - 1; index += 1) {
+      edgeSet.add(`${nodes[index + 1]}__${nodes[index]}`);
+    }
+  }
+
+  return { nodeHeatmap, pathOrder, edgeSet };
+}
+
+export function buildFlowElements({ graph, activeAlarms = [], explainability, selectedNodeId, state, trajectory }) {
   if (!graph?.nodes?.length) {
     return { nodes: [], edges: [], nodeMap: new Map() };
   }
 
   const alarmMap = new Map(activeAlarms.map((alarm) => [alarm.node_id, alarm]));
+  const trajectoryOverlay = buildTrajectoryOverlay(trajectory);
   const positions = createPositions(graph.nodes);
   const nodeMap = new Map(graph.nodes.map((node) => [node.node_id, node]));
   const confirmedRootId = state?.episode_done ? state?.resolved_node_id ?? null : null;
@@ -60,6 +86,7 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
   const nodes = graph.nodes.map((node) => {
     const suspect = explainability?.primaryCandidate?.nodeId === node.node_id;
     const alarm = alarmMap.get(node.node_id);
+    const trajectoryNode = trajectoryOverlay.nodeHeatmap.get(node.node_id);
     return {
       id: node.node_id,
       type: "telecomNode",
@@ -72,15 +99,23 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
         isSuspect: suspect,
         isConfirmedRoot: confirmedRootId === node.node_id,
         suspicionScore: explainability?.candidates?.find((candidate) => candidate.nodeId === node.node_id)?.confidence ?? 0,
+        trajectoryVisitCount: trajectoryNode?.visit_count ?? 0,
+        trajectoryIntensity: trajectoryNode?.intensity ?? 0,
+        trajectoryOrder: trajectoryOverlay.pathOrder.get(node.node_id) ?? null,
+        isTrajectoryHit: Boolean(trajectoryNode),
+        isTrajectoryPath: trajectoryOverlay.pathOrder.has(node.node_id),
       },
     };
   });
 
   const edges = (graph.edges ?? []).map((edge) => {
+    const trajectoryEdgeKey = `${edge.source_id}__${edge.target_id}`;
+    const onTrajectoryPath = trajectoryOverlay.edgeSet.has(trajectoryEdgeKey);
     const animated =
       isPropagationEdge(edge, explainability?.propagationPath ?? []) ||
       alarmMap.has(edge.source_id) ||
-      alarmMap.has(edge.target_id);
+      alarmMap.has(edge.target_id) ||
+      onTrajectoryPath;
 
     const onCriticalPath = isPropagationEdge(edge, explainability?.propagationPath ?? []);
     const criticalStroke = "#D8D1C2";
@@ -92,8 +127,14 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
       type: "smoothstep",
       animated,
       style: {
-        stroke: onCriticalPath ? criticalStroke : animated ? softStroke : "rgba(216, 209, 194, 0.18)",
-        strokeWidth: onCriticalPath ? 2.5 : animated ? 1.8 : 1.2,
+        stroke: onTrajectoryPath
+          ? "#C7904D"
+          : onCriticalPath
+            ? criticalStroke
+            : animated
+              ? softStroke
+              : "rgba(216, 209, 194, 0.18)",
+        strokeWidth: onTrajectoryPath ? 2.9 : onCriticalPath ? 2.5 : animated ? 1.8 : 1.2,
       },
     };
   });

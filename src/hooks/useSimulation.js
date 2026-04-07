@@ -3,7 +3,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { chooseAgentAction, buildTranscriptStep, createAgentMemory, createTranscript } from "@/utils/agent";
 import { buildFlowElements } from "@/utils/graph";
 import { deriveExplainability } from "@/utils/explainability";
-import { getState, getTasks, gradeSimulation, resetSimulation, stepSimulation } from "@/services/api";
+import { getState, getTasks, getTrajectory, gradeSimulation, resetSimulation, stepSimulation } from "@/services/api";
 import { createStateSocket } from "@/services/socket";
 
 function buildTrajectory(state = {}) {
@@ -76,6 +76,7 @@ export function useSimulation() {
   const [observation, setObservation] = useState(null);
   const [runtimeState, setRuntimeState] = useState(null);
   const [grade, setGrade] = useState(null);
+  const [trajectory, setTrajectory] = useState(null);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [transcript, setTranscript] = useState(() => createTranscript("medium"));
@@ -114,8 +115,9 @@ export function useSimulation() {
         explainability,
         selectedNodeId,
         state: runtimeState,
+        trajectory,
       }),
-    [observation?.graph, filteredAlarms, explainability, selectedNodeId, runtimeState],
+    [observation?.graph, filteredAlarms, explainability, selectedNodeId, runtimeState, trajectory],
   );
 
   useEffect(() => {
@@ -124,11 +126,12 @@ export function useSimulation() {
       observation,
       runtimeState,
       explainability,
+      trajectory,
       selectedNodeId,
       agentMemory,
       showNoise,
     };
-  }, [task, observation, runtimeState, explainability, selectedNodeId, agentMemory, showNoise]);
+  }, [task, observation, runtimeState, explainability, trajectory, selectedNodeId, agentMemory, showNoise]);
 
   const fetchGrade = useCallback(async (nextTask, nextState) => {
     try {
@@ -148,7 +151,10 @@ export function useSimulation() {
         observation: nextObservation,
         includeNoise: snapshotRef.current.showNoise ?? true,
       });
-      const nextGrade = await fetchGrade(nextTask, nextState);
+      const [nextTrajectory, nextGrade] = await Promise.all([
+        getTrajectory(nextTask).catch(() => null),
+        fetchGrade(nextTask, nextState),
+      ]);
       const nextNodeIds = new Set((nextObservation?.graph?.nodes ?? []).map((node) => node.node_id));
       const preferredNode =
         snapshotRef.current.selectedNodeId && nextNodeIds.has(snapshotRef.current.selectedNodeId)
@@ -162,6 +168,7 @@ export function useSimulation() {
         setObservation(nextObservation);
         setRuntimeState(nextState);
         setGrade(nextGrade);
+        setTrajectory(nextTrajectory);
         setSelectedNodeId(preferredNode);
         setMetricsHistory((previous) => {
           const point = createMetricPoint({
@@ -250,6 +257,7 @@ export function useSimulation() {
       setObservation(null);
       setRuntimeState(null);
       setGrade(null);
+      setTrajectory(null);
       setSelectedNodeId(null);
       setMetricsHistory([]);
       setLatestAction(null);
@@ -262,6 +270,7 @@ export function useSimulation() {
         observation: null,
         runtimeState: null,
         explainability: null,
+        trajectory: null,
         selectedNodeId: null,
         agentMemory: createAgentMemory(),
       };
@@ -419,6 +428,7 @@ export function useSimulation() {
     observation,
     runtimeState,
     grade,
+    trajectory,
     selectedNodeId,
     setSelectedNodeId,
     filteredAlarms,

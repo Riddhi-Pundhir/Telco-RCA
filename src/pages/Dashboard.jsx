@@ -27,6 +27,11 @@ const MetricsPanel = lazy(() =>
     default: module.MetricsPanel,
   })),
 );
+const TrajectoryPanel = lazy(() =>
+  import("@/components/TrajectoryPanel/TrajectoryPanel").then((module) => ({
+    default: module.TrajectoryPanel,
+  })),
+);
 
 function PanelSkeleton({ title, minHeight = "min-h-[20rem]", lines = 3 }) {
   return (
@@ -63,6 +68,7 @@ export function Dashboard({
   explainability,
   flow,
   metricsHistory,
+  trajectory,
   transcript,
   latestAction,
   latestInfo,
@@ -151,6 +157,9 @@ export function Dashboard({
               observation={observation}
               grade={grade}
             />
+          </Suspense>
+          <Suspense fallback={<PanelSkeleton title="Trajectory Panel" minHeight="min-h-[26rem]" lines={5} />}>
+            <TrajectoryPanel trajectory={trajectory} onSelectNode={setSelectedNodeId} />
           </Suspense>
         </div>
       </div>

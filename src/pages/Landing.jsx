@@ -94,19 +94,19 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
     <main className="relative isolate mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 py-10 lg:px-10">
       <AmbientNetwork />
 
-      <div className="grid items-center gap-8 lg:grid-cols-[1.12fr_0.88fr]">
+      <div className="grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12">
         <motion.section
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, ease: "easeOut" }}
           className="relative z-10"
         >
-          <h1 className="break-anywhere mt-6 max-w-4xl font-display text-5xl font-semibold leading-[0.95] tracking-tight text-cream sm:text-6xl lg:text-7xl">
+          <h1 className="break-anywhere mt-6 max-w-3xl font-display text-5xl font-semibold leading-[0.95] tracking-tight text-cream sm:text-6xl lg:text-7xl">
             AI-Powered
             <span className="block text-sand">Telecom Root Cause Analysis</span>
           </h1>
 
-          <p className="break-anywhere mt-6 max-w-2xl text-lg leading-8 text-cream/72 sm:text-xl">
+          <p className="break-anywhere mt-6 max-w-xl text-lg leading-8 text-cream/72 sm:text-xl">
             A refined telecom operations experience that makes graph-based RCA immediately understandable:
             cascade visibility, agent reasoning, and operational metrics in one premium interface.
           </p>
@@ -121,9 +121,9 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
               Launch Simulation
               <ArrowRight className="h-4 w-4" />
             </button>
-            <div className="control-chip">
+            <div className="control-chip whitespace-nowrap">
               <Waypoints className="h-4 w-4" />
-              Graphical reasoning with live symptom
+              Graphical reasoning · live symptoms
             </div>
           </div>
 
@@ -160,19 +160,33 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {Object.entries(TASK_METADATA).map(([taskKey, meta]) => {
               const isActive = taskKey === activeTask;
+              const isExtreme = taskKey === "extreme";
+              const activeClass = isExtreme
+                ? "border-sand/28 bg-gradient-to-br from-sand/[0.12] via-bronze/8 to-transparent shadow-[0_16px_28px_rgba(0,0,0,0.16)]"
+                : "border-sand/45 bg-gradient-to-br from-sand/[0.18] to-bronze/10 shadow-glow";
               return (
                 <button
                   key={taskKey}
                   type="button"
                   onClick={() => onSelectTask(taskKey)}
-                  className={`w-full rounded-[1.6rem] border px-5 py-4 text-left transition duration-300 ${
+                  className={`relative w-full overflow-hidden rounded-[1.6rem] border px-5 py-4 text-left transition duration-300 ${
                     isActive
-                      ? "border-sand/45 bg-gradient-to-br from-sand/[0.18] to-bronze/10 shadow-glow"
+                      ? activeClass
                       : "border-cream/10 bg-black/10 hover:border-sand/20 hover:bg-cream/[0.04]"
                   }`}
                 >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${meta.accent} ${
+                      isActive ? "opacity-75" : "opacity-50"
+                    }`}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-[1.6rem] ring-1 ring-inset ring-white/5"
+                  />
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                    <div className="relative z-10">
                       <p className="soft-label">{`Task-${meta.index}`}</p>
                       <h3 className="mt-2 whitespace-nowrap font-display text-[clamp(1.15rem,1.45vw,1.5rem)] font-semibold leading-none tracking-tight text-cream">
                         {meta.title}
@@ -182,7 +196,7 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
                       </p>
                     </div>
                   </div>
-                  <p className="clamp-2 break-anywhere mt-3 text-sm text-cream/65">{meta.operatorStory}</p>
+                  <p className="clamp-2 relative z-10 mt-3 break-anywhere text-sm text-cream/65">{meta.operatorStory}</p>
                 </button>
               );
             })}

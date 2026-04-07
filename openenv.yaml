@@ -117,6 +117,7 @@ endpoints:
   reset: "POST /reset"
   step:  "POST /step"
   state: "GET /state"
+  trajectory: "GET /trajectory"
   state_internal: "GET /state/internal"
   tasks: "GET /tasks"
   grade: "POST /grade"

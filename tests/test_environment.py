@@ -509,6 +509,35 @@ class TestStateEndpoint:
 
 
 # ================================================================== #
+#  Trajectory Tests                                                    #
+# ================================================================== #
+
+class TestTrajectoryEndpoint:
+
+    def test_trajectory_before_reset(self):
+        env = TelcoRCAEnvironment("easy")
+        trajectory = env.trajectory()
+        assert trajectory["status"] == "not_started"
+
+    def test_trajectory_captures_steps_and_heatmap(self):
+        env = TelcoRCAEnvironment("medium")
+        obs = env.reset(seed=13)
+        alarm = obs.active_alarms[0]
+
+        env.step(AgentAction(action_type="CHECK_LOGS", target_node_id=alarm.node_id))
+        env.step(AgentAction(action_type="TRACE_PATH", target_node_id=alarm.node_id))
+
+        trajectory = env.trajectory()
+
+        assert trajectory["step_log"]
+        assert trajectory["reward_series"]
+        assert trajectory["heatmap"]
+        assert alarm.node_id in trajectory["path_nodes"]
+        assert trajectory["step_log"][0]["reward_breakdown"]
+        assert trajectory["path_segments"]
+
+
+# ================================================================== #
 #  Model Validation Tests                                              #
 # ================================================================== #
 

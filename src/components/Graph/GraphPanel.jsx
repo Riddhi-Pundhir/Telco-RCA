@@ -70,7 +70,7 @@ export function GraphPanel({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [reactFlowInstance, categorizedGraph.nodes]);
+  }, [reactFlowInstance, categorizedGraph.nodes.length, categorizedGraph.edges.length]);
 
   return (
     <section className="panel-shell flex min-h-[34rem] flex-col overflow-hidden">

@@ -25,7 +25,7 @@ export const TASK_METADATA = {
     title: "Extreme Cascade",
     shortLabel: "Extreme",
     operatorStory: "Worst-case multi-hop recovery under heavy noise",
-    accent: "from-failure/40 via-bronze/10 to-transparent",
+    accent: "from-failure/18 via-bronze/6 to-transparent",
   },
 };
 

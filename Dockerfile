@@ -30,7 +30,7 @@ COPY --from=frontend /frontend/app/static ./app/static
 EXPOSE 7860
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:%s/health' % os.getenv('PORT', '7860'))"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=5 \
+    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://localhost:%s/ready' % os.getenv('PORT', '7860'))"
 
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860} --proxy-headers --forwarded-allow-ips='*'"]

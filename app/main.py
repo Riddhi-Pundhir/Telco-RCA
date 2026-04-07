@@ -12,12 +12,15 @@ Endpoints:
     POST /grade    — Score a complete trajectory
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import os
+import time
 
 from .environment import TelcoRCAEnvironment
 from .models import AgentAction, TASK_CONFIGS
@@ -32,6 +35,10 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+INDEX_PATH = STATIC_DIR / "index.html"
 
 
 def _load_allowed_origins() -> list[str]:
@@ -57,6 +64,9 @@ ALLOWED_ORIGINS = _load_allowed_origins()
 ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", r"https://.*\.hf\.space")
 INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "")
 
+app.state.startup_ready = False
+app.state.startup_checks = {}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -68,12 +78,64 @@ app.add_middleware(
 # Route for the main UI
 @app.get("/")
 def serve_ui():
-    static_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
-    if os.path.exists(static_path):
-        return FileResponse(static_path)
-    return {"error": "UI not built yet."}
+    if INDEX_PATH.exists():
+        return FileResponse(INDEX_PATH)
+    return HTMLResponse(
+        """
+        <!doctype html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Telco-RCA</title>
+            <style>
+              body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                background: #2a1114;
+                color: #f3e8d7;
+                font-family: ui-sans-serif, system-ui, sans-serif;
+              }
+              .card {
+                max-width: 32rem;
+                padding: 2rem;
+                border: 1px solid rgba(243, 232, 215, 0.2);
+                border-radius: 1.25rem;
+                background: rgba(255, 255, 255, 0.05);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+              }
+              h1 { margin: 0 0 0.75rem; font-size: 1.5rem; }
+              p { margin: 0.5rem 0 0; line-height: 1.6; opacity: 0.9; }
+              code { background: rgba(255,255,255,0.08); padding: 0.15rem 0.35rem; border-radius: 0.35rem; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>Telco-RCA is starting</h1>
+              <p>The UI assets are not available yet. Refresh in a moment, or check <code>/ready</code> for the boot status.</p>
+            </div>
+          </body>
+        </html>
+        """.strip(),
+        status_code=200,
+    )
 
-app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.on_event("startup")
+def _startup_check():
+    checks = {
+        "static_dir_exists": STATIC_DIR.exists(),
+        "index_html_exists": INDEX_PATH.exists(),
+        "task_registry_loaded": bool(TASK_CONFIGS),
+    }
+    app.state.startup_checks = checks
+    app.state.startup_ready = all(checks.values())
+    app.state.startup_started_at = time.time()
 
 # One environment instance per task (stateful server)
 _envs: dict[str, TelcoRCAEnvironment] = {}
@@ -119,8 +181,26 @@ def health():
         "status": "ok",
         "environment": "telco-rca",
         "version": "1.0.0",
+        "ready": bool(getattr(app.state, "startup_ready", False)),
+        "ui_assets_ready": INDEX_PATH.exists(),
         "tasks_available": list(TASK_CONFIGS.keys()),
     }
+
+
+@app.get("/ready")
+def ready():
+    ready_state = bool(getattr(app.state, "startup_ready", False))
+    started_at = float(getattr(app.state, "startup_started_at", time.time()))
+    payload = {
+        "status": "ready" if ready_state else "booting",
+        "ready": ready_state,
+        "environment": "telco-rca",
+        "version": "1.0.0",
+        "uptime_seconds": round(time.time() - started_at, 2),
+        "checks": getattr(app.state, "startup_checks", {}),
+        "tasks_available": list(TASK_CONFIGS.keys()),
+    }
+    return JSONResponse(status_code=200 if ready_state else 503, content=payload)
 
 
 @app.get("/tasks")

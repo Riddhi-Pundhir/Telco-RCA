@@ -30,7 +30,7 @@ export function AgentPanel({ transcript, latestAction, latestInfo, error, isRunn
             <Radar className="h-5 w-5 text-bronze" />
             <div>
               <p className="soft-label">Current action</p>
-              <p className="mt-1 font-display text-[1.7rem] font-semibold text-cream">
+              <p className="break-anywhere mt-1 font-display text-[1.55rem] font-semibold leading-none text-cream">
                 {latestAction
                   ? formatActionCall(latestAction.actionType, latestAction.targetNodeId)
                   : "Awaiting operator or agent step"}
@@ -49,7 +49,7 @@ export function AgentPanel({ transcript, latestAction, latestInfo, error, isRunn
                   responseItems.map((item) => (
                     <div key={`${item.label}-${item.value}`} className="rounded-[1rem] border border-cream/10 bg-cream/[0.05] p-3">
                       <p className="text-[0.68rem] uppercase tracking-[0.24em] text-cream/45">{item.label}</p>
-                      <p className="mt-2 text-sm font-medium text-cream/75">{item.value}</p>
+                      <p className="break-anywhere mt-2 text-sm font-medium text-cream/75">{item.value}</p>
                     </div>
                   ))
                 ) : (

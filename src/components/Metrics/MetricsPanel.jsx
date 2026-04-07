@@ -103,15 +103,15 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-4 gap-3">
             {[
               { label: "F1", value: latest.f1 },
               { label: "Precision", value: latest.precision },
               { label: "Recall", value: latest.recall },
               { label: "MTTR", value: latest.mttr, raw: true },
             ].map((card) => (
-              <div key={card.label} className="stat-card">
-                <p className="soft-label">{card.label}</p>
+              <div key={card.label} className="stat-card min-w-0">
+                <p className="soft-label whitespace-nowrap">{card.label}</p>
                 <p className="mt-2 text-2xl font-bold text-cream">
                   {card.raw ? card.value : formatPercentage(card.value)}
                 </p>

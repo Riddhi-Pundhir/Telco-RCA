@@ -83,6 +83,8 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
       alarmMap.has(edge.target_id);
 
     const onCriticalPath = isPropagationEdge(edge, explainability?.propagationPath ?? []);
+    const criticalStroke = "#D8D1C2";
+    const softStroke = "rgba(216, 209, 194, 0.42)";
     return {
       id: `${edge.source_id}-${edge.target_id}`,
       source: edge.source_id,
@@ -90,7 +92,7 @@ export function buildFlowElements({ graph, activeAlarms = [], explainability, se
       type: "smoothstep",
       animated,
       style: {
-        stroke: onCriticalPath ? "#E8D1C5" : animated ? "#F2B950" : "rgba(243, 232, 223, 0.16)",
+        stroke: onCriticalPath ? criticalStroke : animated ? softStroke : "rgba(216, 209, 194, 0.18)",
         strokeWidth: onCriticalPath ? 2.5 : animated ? 1.8 : 1.2,
       },
     };

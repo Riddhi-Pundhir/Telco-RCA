@@ -1,9 +1,27 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
-import { Dashboard } from "@/pages/Dashboard";
 import { Landing } from "@/pages/Landing";
 import { useSimulation } from "@/hooks/useSimulation";
+
+const Dashboard = lazy(() =>
+  import("@/pages/Dashboard").then((module) => ({
+    default: module.Dashboard,
+  })),
+);
+
+function DashboardLoading() {
+  return (
+    <div className="mx-auto flex min-h-[60vh] w-full max-w-4xl items-center justify-center rounded-[1.8rem] border border-cream/10 bg-[#261718]/78 px-6 py-10 text-center text-cream/70 shadow-panel backdrop-blur-xl">
+      <div>
+        <p className="section-title">Loading Mission Control</p>
+        <p className="mt-3 text-lg text-cream/70">
+          Splitting the dashboard bundle so the heavy graph and metrics code load only when needed.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const simulation = useSimulation();
@@ -59,13 +77,15 @@ export default function App() {
             exit={{ opacity: 0, y: -22 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <Dashboard
-              {...simulation}
-              onReturnToLanding={() => {
-                simulation.stopAgent();
-                setView("landing");
-              }}
-            />
+            <Suspense fallback={<DashboardLoading />}>
+              <Dashboard
+                {...simulation}
+                onReturnToLanding={() => {
+                  simulation.stopAgent();
+                  setView("landing");
+                }}
+              />
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>

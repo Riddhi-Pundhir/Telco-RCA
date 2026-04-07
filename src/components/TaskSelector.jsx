@@ -57,15 +57,17 @@ export function TaskSelector({
                   key={entry.key}
                   type="button"
                   onClick={() => onTaskChange(entry.key)}
-                  className={`rounded-[1.35rem] border px-4 py-3 text-left transition duration-300 ${
+                  className={`min-w-0 max-w-full rounded-[1.35rem] border px-4 py-3 text-left transition duration-300 ${
                     active
                       ? "border-sand/45 bg-gradient-to-br from-sand/20 to-bronze/10 shadow-glow"
                       : "border-cream/10 bg-black/10 hover:border-sand/20 hover:bg-cream/[0.04]"
                   }`}
                 >
                   <p className="soft-label">{entry.key}</p>
-                  <p className="mt-1 font-display text-2xl font-semibold text-cream">{entry.title}</p>
-                  <p className="mt-1 text-sm text-cream/60">{entry.description}</p>
+                  <p className="break-anywhere mt-1 font-display text-[1.65rem] font-semibold leading-none text-cream">
+                    {entry.title}
+                  </p>
+                  <p className="clamp-2 break-anywhere mt-1 text-sm text-cream/60">{entry.description}</p>
                 </button>
               );
             })}
@@ -114,17 +116,19 @@ export function TaskSelector({
       <div className="mt-5 grid gap-3 md:grid-cols-4">
         <div className="stat-card">
           <p className="soft-label">Simulation time</p>
-          <p className="mt-2 font-display text-3xl font-semibold text-cream">
+          <p className="break-anywhere mt-2 font-display text-3xl font-semibold text-cream">
             {formatSimTime(observation?.simulation_time_s ?? runtimeState?.simulation_time_s)}
           </p>
         </div>
         <div className="stat-card">
           <p className="soft-label">Alarm volume</p>
-          <p className="mt-2 font-display text-3xl font-semibold text-cream">{observation?.total_alarm_count ?? 0}</p>
+          <p className="break-anywhere mt-2 font-display text-3xl font-semibold text-cream">
+            {observation?.total_alarm_count ?? 0}
+          </p>
         </div>
         <div className="stat-card">
           <p className="soft-label">Steps used</p>
-          <p className="mt-2 font-display text-3xl font-semibold text-cream">
+          <p className="break-anywhere mt-2 font-display text-3xl font-semibold text-cream">
             {runtimeState?.steps_taken ?? 0}
             <span className="text-base text-cream/55">
               {" "}
@@ -134,7 +138,7 @@ export function TaskSelector({
         </div>
         <div className="stat-card">
           <p className="soft-label">Judge projection</p>
-          <p className="mt-2 flex items-center gap-2 font-display text-3xl font-semibold text-cream">
+          <p className="break-anywhere mt-2 flex items-center gap-2 font-display text-3xl font-semibold text-cream">
             <Bot className="h-5 w-5 text-bronze" />
             {formatPercentage(grade?.score ?? 0)}
           </p>

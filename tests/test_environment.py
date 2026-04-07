@@ -40,6 +40,12 @@ class TestEnvironmentReset:
         obs = env.reset()
         assert obs.steps_remaining == 50
 
+    def test_extreme_reset(self):
+        env = TelcoRCAEnvironment("extreme")
+        obs = env.reset(seed=7)
+        assert obs.steps_remaining == 75
+        assert obs.total_alarm_count >= 1
+
     def test_medium_reset(self):
         env = TelcoRCAEnvironment("medium")
         obs = env.reset()
@@ -125,6 +131,11 @@ class TestTopology:
         env.reset()
         assert len(env._state.nodes) == TASK_CONFIGS["hard"].num_nodes
 
+    def test_extreme_node_count(self):
+        env = TelcoRCAEnvironment("extreme")
+        env.reset(seed=7)
+        assert len(env._state.nodes) == TASK_CONFIGS["extreme"].num_nodes
+
     def test_parent_child_consistency(self):
         """Every child should point back to its parent."""
         env = TelcoRCAEnvironment("medium")
@@ -170,6 +181,14 @@ class TestTopology:
             all_in_regions.update(nodes)
         for nid in env._state.nodes:
             assert nid in all_in_regions, f"Node {nid} not in any region"
+
+    def test_topology_rejects_oversized_graph(self):
+        env = TelcoRCAEnvironment("hard")
+        try:
+            env._build_topology(1501, 2)
+            assert False, "Should have raised ValueError"
+        except ValueError as exc:
+            assert "num_nodes too large" in str(exc)
 
 
 # ================================================================== #
@@ -499,6 +518,7 @@ class TestModels:
         assert "easy" in TASK_CONFIGS
         assert "medium" in TASK_CONFIGS
         assert "hard" in TASK_CONFIGS
+        assert "extreme" in TASK_CONFIGS
 
     def test_task_config_fields(self):
         for name, cfg in TASK_CONFIGS.items():
@@ -586,3 +606,10 @@ class TestIntegration:
         obs = env.reset()
         assert obs.total_alarm_count >= 10  # should be many more typically
         assert len(obs.network_summary["regions"]) >= 3
+
+    def test_extreme_episode_scales_with_high_noise(self):
+        env = TelcoRCAEnvironment("extreme")
+        obs = env.reset(seed=13)
+        assert len(obs.graph["nodes"]) <= 100
+        assert obs.total_alarm_count >= 20
+        assert len(obs.network_summary["regions"]) == TASK_CONFIGS["extreme"].num_regions

@@ -18,12 +18,12 @@ function pickIcon(layer) {
 
 function statusTone(status) {
   if (status === "FAILED") {
-    return "text-failure";
+    return "border-failure/30 bg-failure/20 text-black";
   }
   if (status === "DEGRADED") {
-    return "text-suspect";
+    return "border-suspect/30 bg-suspect/20 text-black";
   }
-  return "text-healthy";
+  return "border-black/10 bg-black/5 text-black";
 }
 
 export function TelecomNode({ data }) {
@@ -31,6 +31,7 @@ export function TelecomNode({ data }) {
   const classes = [
     "telecom-node",
     data.isSelected ? "selected" : "",
+    data.isHighlighted ? "highlighted" : "",
     data.isSuspect ? "suspect pulse" : "",
     data.isConfirmedRoot ? "confirmed pulse" : "",
   ]
@@ -39,27 +40,29 @@ export function TelecomNode({ data }) {
 
   return (
     <div className={classes}>
-      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
+      <Handle type="target" position={Position.Left} style={{ opacity: 0, pointerEvents: "none" }} />
       <div className="relative flex items-start justify-between gap-3">
-        <div className="rounded-2xl border border-cream/10 bg-black/12 p-2">
-          <Icon className="h-5 w-5 text-bronze" />
+        <div className="rounded-2xl border border-black/10 bg-black/5 p-2">
+          <Icon className="h-5 w-5 text-black/80" />
         </div>
-        <div className={`rounded-full border border-cream/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.24em] ${statusTone(data.status_name)}`}>
+        <div className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.24em] ${statusTone(data.status_name)}`}>
           {data.status_name}
         </div>
       </div>
 
-      <p className="mt-4 text-sm font-semibold uppercase tracking-[0.22em] text-sand/65">
+      <p className="mt-4 text-sm font-semibold uppercase tracking-[0.22em] text-black/70">
         {data.config?.shortLabel}
       </p>
-      <p className="mt-1 font-display text-2xl font-semibold text-cream">{data.node_id}</p>
-      <p className="mt-2 text-sm text-cream/58">{data.config?.role}</p>
+      <p className="break-anywhere mt-1 font-display text-[1.9rem] font-semibold leading-none text-black">
+        {data.node_id}
+      </p>
+      <p className="break-anywhere mt-2 text-sm text-black/70">{data.config?.role}</p>
 
-      <div className="mt-4 flex items-center justify-between text-xs text-cream/52">
+      <div className="mt-4 flex items-center justify-between text-xs text-black/60">
         <span>{data.region}</span>
         <span>{formatPercentage(data.suspicionScore ?? 0)}</span>
       </div>
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: "none" }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, pointerEvents: "none" }} />
     </div>
   );
 }

@@ -106,12 +106,12 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
             Premium RCA Interface
           </div>
 
-          <h1 className="mt-6 max-w-4xl font-display text-5xl font-semibold leading-[0.95] tracking-tight text-cream sm:text-6xl lg:text-7xl">
+          <h1 className="break-anywhere mt-6 max-w-4xl font-display text-5xl font-semibold leading-[0.95] tracking-tight text-cream sm:text-6xl lg:text-7xl">
             AI-Powered
             <span className="block text-sand">Telecom Root Cause Analysis</span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-cream/72 sm:text-xl">
+          <p className="break-anywhere mt-6 max-w-2xl text-lg leading-8 text-cream/72 sm:text-xl">
             A refined telecom operations experience that makes graph-based RCA immediately understandable:
             cascade visibility, agent reasoning, and operational metrics in one premium interface.
           </p>
@@ -140,8 +140,10 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
                 className="surface-card hero-sheen p-5"
               >
                 <feature.icon className="h-6 w-6 text-bronze" />
-                <h2 className="mt-4 font-display text-[1.6rem] font-semibold text-cream">{feature.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-cream/65">{feature.text}</p>
+                <h2 className="break-anywhere mt-4 font-display text-[1.6rem] font-semibold leading-none text-cream">
+                  {feature.title}
+                </h2>
+                <p className="clamp-3 break-anywhere mt-2 text-sm leading-6 text-cream/65">{feature.text}</p>
               </motion.div>
             ))}
           </div>
@@ -178,13 +180,15 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="soft-label">Task {meta.index}</p>
-                      <h3 className="mt-2 font-display text-[1.75rem] font-semibold text-cream">{meta.title}</h3>
+                      <h3 className="break-anywhere mt-2 font-display text-[1.75rem] font-semibold leading-none text-cream">
+                        {meta.title}
+                      </h3>
                     </div>
                     <span className="rounded-full border border-cream/10 bg-black/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sand/80">
                       {meta.shortLabel}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm text-cream/65">{meta.operatorStory}</p>
+                  <p className="clamp-2 break-anywhere mt-3 text-sm text-cream/65">{meta.operatorStory}</p>
                 </button>
               );
             })}
@@ -193,13 +197,13 @@ export function Landing({ activeTask, onSelectTask, onLaunch, loading }) {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="surface-card">
               <p className="soft-label">Why it wins</p>
-              <p className="mt-3 font-display text-2xl font-semibold text-cream">
+              <p className="break-anywhere mt-3 font-display text-2xl font-semibold text-cream">
                 Immediate graph storytelling with operator-grade polish.
               </p>
             </div>
             <div className="surface-card">
               <p className="soft-label">Visual direction</p>
-              <p className="mt-3 text-sm leading-7 text-cream/68">
+              <p className="break-anywhere mt-3 text-sm leading-7 text-cream/68">
                 Deep burgundy, warm ivory, elegant contrast, and motion that feels intelligent rather than noisy.
               </p>
             </div>

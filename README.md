@@ -117,6 +117,7 @@ docker run -p 7860:7860 \
 Configure these in the Space settings instead of committing them:
 
 - `HF_TOKEN`: provider token used by `inference.py`
+- `OPENAI_API_KEY`: accepted as a fallback alias by `inference.py`
 - `API_BASE_URL`: upstream LLM endpoint
 - `MODEL_NAME`: model identifier
 - `PUBLIC_BASE_URL`: your public Space URL, for example `https://ayushman098-telco-rca.hf.space`
@@ -146,7 +147,7 @@ pytest tests/ -v
 The Vite app builds into `app/static/`, so a production build is served directly from the FastAPI root route.
 
 ### 3. Run Baseline Agent
-We provide a compliant `inference.py` script bridging heuristics with OpenAI-spec LLM API clients:
+We provide a compliant `inference.py` script bridging heuristics with OpenAI-spec LLM API clients. It accepts either `HF_TOKEN` or `OPENAI_API_KEY` and emits structured `[START]`, `[STEP]`, and `[END]` JSON logs:
 ```bash
 SERVER_URL=https://ayushman098-telco-rca.hf.space \
 python inference.py

@@ -38,6 +38,16 @@ tasks:
     num_nodes: 500
     noise_ratio: 0.4
 
+  - name: extreme
+    description: >
+      Worst-case outage in a 1000-node 5G network with 60% noise. Agents must
+      traverse deep dependencies, filter heavy alarm clutter, and isolate the true
+      root cause within a wide multi-region topology.
+    max_steps: 75
+    difficulty: extreme
+    num_nodes: 1000
+    noise_ratio: 0.6
+
 action_space:
   type: discrete_typed
   actions:

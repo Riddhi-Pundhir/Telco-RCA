@@ -58,13 +58,14 @@ graph TD
 
 ## 🎮 Evaluation Tasks
 
-Three rigorously tuned difficulty tiers to test frontier model graph-reasoning:
+Four rigorously tuned difficulty tiers to test frontier model graph-reasoning:
 
 | Task Level | Nodes | Regions | Alarms Triggered | Noise Level | Max Actions | Description |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
 | 🟢 **Easy** | 20 | 1 | 5–20 | 0% | 15 | **Alarm Classification:** Single fault mapping to downstream towers. Tests basic topological inference. |
 | 🟡 **Medium**| 100 | 3 | 10–50 | 20% | 30 | **Multi-Alarm Correlation:** Correlate parallel failures across regional boundaries. Introduces distractor noise. |
 | 🔴 **Hard** | 500 | 5 | 50–300 | 40% | 50 | **KG Traversal:** Extensive 500-node graph tracing. The agent must distinguish critical physical hardware faults from sweeping logical cascades. |
+| ⚫ **Extreme** | 1000 | 8 | 100–600 | 60% | 75 | **Worst-Case RCA:** Deep multi-hop diagnosis under heavy noise. Tests branch pruning, signal filtering, and confident final selection. |
 
 Each reset now builds the exact configured node count for the chosen task instead of using a looser lower-bound topology.
 
@@ -153,6 +154,16 @@ SERVER_URL=https://ayushman098-telco-rca.hf.space \
 python inference.py
 ```
 
+### 4. Run the Benchmark Sweep
+The repo also includes `run_baseline.sh`, which executes the baseline across every task multiple times, then summarizes mean/std score plus MTTR:
+```bash
+chmod +x run_baseline.sh
+./run_baseline.sh --episodes 5 --output artifacts/baseline_report.txt
+```
+
+The script writes a clean evaluator-friendly report and keeps a format example in:
+- [`artifacts/baseline_report_example.txt`](artifacts/baseline_report_example.txt)
+
 ---
 
 ## 📡 Base API Reference
@@ -176,7 +187,7 @@ This project was built fundamentally around the evaluation rubric:
 | Evaluator Criterion (Weight) | Evidence of Compliance |
 |:---:|:---|
 | **Real-world Utility (30%)** | Provides exactly the topology simulations telecom operators use to test alarm correlation engines. Fills a major gap in graph-based RL endpoints. |
-| **Task & Grader Quality (25%)** | 3 explicitly tiered tasks. `app/graders.py` limits to rigid `[0.0, 1.0]` values using distinct MTTR and penalty arrays. Asserts deterministic states. |
+| **Task & Grader Quality (25%)** | 4 explicitly tiered tasks. `app/graders.py` limits to rigid `[0.0, 1.0]` values using distinct MTTR and penalty arrays. Asserts deterministic states. |
 | **Environment Design (20%)** | Pydantic v2 handles distinct action spaces. Reset boundaries cleanly wipe global state arrays. |
 | **Code Quality / OpenEnv (15%)**| `openenv validate .` explicitly passes. The environment runs a massive fast-loading graph within a standard Python Docker container under 100mb RAM. <br> Baseline inference emits rigid `[START]/[STEP]/[END]` standards natively. |
 | **Creativity & Novelty (10%)** | Unique custom Web Dashboard mounted in FastAPI root; entirely novel physical failure domain. |

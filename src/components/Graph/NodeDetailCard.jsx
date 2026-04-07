@@ -22,12 +22,12 @@ export function NodeDetailCard({ node, onAction }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="pointer-events-auto absolute bottom-5 left-5 z-20 w-full max-w-sm rounded-[1.6rem] border border-cream/12 bg-[#261718]/90 p-4 shadow-panel backdrop-blur-xl"
+      className="pointer-events-auto absolute bottom-5 left-5 z-20 w-full max-w-sm rounded-[1.6rem] border border-cream/12 bg-[#261718]/92 p-4 shadow-panel backdrop-blur-xl"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="soft-label">Node status</p>
-          <h3 className="mt-2 text-xl font-semibold text-cream">{data.node_id}</h3>
+          <h3 className="mt-2 font-display text-[1.9rem] font-semibold text-cream">{data.node_id}</h3>
           <p className="mt-1 text-sm text-cream/62">
             {formatLayerLabel(data.layer_name)} · {formatRegion(data.region)}
           </p>
@@ -40,11 +40,11 @@ export function NodeDetailCard({ node, onAction }) {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-[1rem] border border-cream/10 bg-black/15 p-3">
           <p className="soft-label">Voltage</p>
-          <p className="mt-2 text-lg font-semibold text-cream">{Number(data.voltage_v ?? 0).toFixed(1)}V</p>
+          <p className="mt-2 font-display text-2xl font-semibold text-cream">{Number(data.voltage_v ?? 0).toFixed(1)}V</p>
         </div>
         <div className="rounded-[1rem] border border-cream/10 bg-black/15 p-3">
           <p className="soft-label">Temperature</p>
-          <p className="mt-2 text-lg font-semibold text-cream">{Number(data.temperature_c ?? 0).toFixed(1)}°C</p>
+          <p className="mt-2 font-display text-2xl font-semibold text-cream">{Number(data.temperature_c ?? 0).toFixed(1)}°C</p>
         </div>
       </div>
 

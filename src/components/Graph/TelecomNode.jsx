@@ -42,7 +42,7 @@ export function TelecomNode({ data }) {
       <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: "none" }} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="rounded-2xl border border-cream/10 bg-black/12 p-2">
-          <Icon className="h-5 w-5 text-sand" />
+          <Icon className="h-5 w-5 text-bronze" />
         </div>
         <div className={`rounded-full border border-cream/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.24em] ${statusTone(data.status_name)}`}>
           {data.status_name}
@@ -52,7 +52,7 @@ export function TelecomNode({ data }) {
       <p className="mt-4 text-sm font-semibold uppercase tracking-[0.22em] text-sand/65">
         {data.config?.shortLabel}
       </p>
-      <p className="mt-1 text-base font-semibold text-cream">{data.node_id}</p>
+      <p className="mt-1 font-display text-2xl font-semibold text-cream">{data.node_id}</p>
       <p className="mt-2 text-sm text-cream/58">{data.config?.role}</p>
 
       <div className="mt-4 flex items-center justify-between text-xs text-cream/52">
@@ -63,4 +63,3 @@ export function TelecomNode({ data }) {
     </div>
   );
 }
-

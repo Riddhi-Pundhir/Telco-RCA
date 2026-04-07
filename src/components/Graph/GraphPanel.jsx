@@ -88,21 +88,21 @@ export function GraphPanel({
         )}
 
         <div className="pointer-events-none absolute left-5 top-5 z-20 grid gap-3 md:grid-cols-3">
-          <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 backdrop-blur-xl">
+          <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 shadow-soft backdrop-blur-xl">
             <p className="soft-label">Graph slice</p>
             <p className="mt-2 flex items-center gap-2 text-base font-semibold text-cream">
-              <RadioTower className="h-4 w-4 text-sand" />
+              <RadioTower className="h-4 w-4 text-bronze" />
               {observation?.graph?.nodes?.length ?? 0} visible nodes
             </p>
           </div>
-          <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 backdrop-blur-xl">
+          <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 shadow-soft backdrop-blur-xl">
             <p className="soft-label">Propagation path</p>
             <p className="mt-2 flex items-center gap-2 text-base font-semibold text-cream">
               <Activity className="h-4 w-4 text-suspect" />
               {explainability?.propagationPath?.length ?? 0} hops
             </p>
           </div>
-          <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 backdrop-blur-xl">
+          <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 shadow-soft backdrop-blur-xl">
             <p className="soft-label">False positives</p>
             <p className="mt-2 flex items-center gap-2 text-base font-semibold text-cream">
               <AlertTriangle className="h-4 w-4 text-failure" />
@@ -119,9 +119,9 @@ export function GraphPanel({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="pointer-events-none absolute bottom-5 left-5 z-20 flex items-center gap-3 rounded-full border border-cream/12 bg-[#261718]/75 px-4 py-2 text-sm text-cream/65 backdrop-blur-xl"
+            className="pointer-events-none absolute bottom-5 left-5 z-20 flex items-center gap-3 rounded-full border border-cream/12 bg-[#261718]/75 px-4 py-2 text-sm text-cream/65 shadow-soft backdrop-blur-xl"
           >
-            <Info className="h-4 w-4 text-sand" />
+            <Info className="h-4 w-4 text-bronze" />
             Click a node to inspect status and run RCA actions.
           </motion.div>
         ) : null}
@@ -129,4 +129,3 @@ export function GraphPanel({
     </section>
   );
 }
-

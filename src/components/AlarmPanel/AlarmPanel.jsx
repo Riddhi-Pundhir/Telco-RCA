@@ -5,10 +5,10 @@ import { formatAlarmTime } from "@/utils/formatters";
 
 function severityStyles(severity) {
   if (severity === "CRITICAL") {
-    return "border-failure/35 bg-failure/10";
+    return "border-failure/35 bg-failure/[0.1]";
   }
   if (severity === "MAJOR") {
-    return "border-suspect/35 bg-suspect/10";
+    return "border-suspect/35 bg-suspect/[0.1]";
   }
   return "border-cream/10 bg-black/10";
 }
@@ -41,18 +41,18 @@ export function AlarmPanel({ alarms, totalAlarmCount, selectedNodeId, onSelectNo
                 transition={{ duration: 0.24, delay: Math.min(index * 0.02, 0.16) }}
                 className={`alarm-ticker-enter w-full rounded-[1.3rem] border p-4 text-left transition ${
                   selected
-                    ? "border-sand/40 bg-sand/10 shadow-glow"
+                    ? "border-sand/40 bg-gradient-to-r from-sand/[0.18] to-bronze/[0.08] shadow-glow"
                     : severityStyles(alarm.severity)
                 } ${alarm.severity === "CRITICAL" ? "alarm-critical" : ""}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 rounded-full border border-cream/10 bg-black/15 p-2">
-                      <BellRing className="h-4 w-4 text-sand" />
+                      <BellRing className="h-4 w-4 text-bronze" />
                     </div>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-cream">{alarm.node_id}</p>
+                        <p className="font-display text-2xl font-semibold text-cream">{alarm.node_id}</p>
                         <span className="rounded-full border border-cream/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-cream/70">
                           {alarm.severity}
                         </span>
@@ -83,4 +83,3 @@ export function AlarmPanel({ alarms, totalAlarmCount, selectedNodeId, onSelectNo
     </section>
   );
 }
-

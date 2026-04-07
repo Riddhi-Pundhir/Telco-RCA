@@ -15,9 +15,25 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-espresso text-cream">
+    <div className="relative min-h-screen overflow-hidden bg-espresso font-body text-cream">
       <div className="pointer-events-none absolute inset-0 bg-mesh opacity-90" />
       <div className="pointer-events-none absolute inset-0 noise-pattern opacity-40" />
+      <div className="pointer-events-none hero-grid absolute inset-0 opacity-70" />
+      <motion.div
+        className="ambient-bloom absolute -left-20 top-10 h-72 w-72 rounded-full bg-sand/20"
+        animate={{ x: [0, 24, 0], y: [0, -16, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="ambient-bloom absolute right-0 top-24 h-96 w-96 rounded-full bg-claret/40"
+        animate={{ x: [0, -28, 0], y: [0, 20, 0], scale: [1, 1.12, 1] }}
+        transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="ambient-bloom absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-bronze/15"
+        animate={{ x: [0, 18, 0], y: [0, -22, 0], scale: [1, 1.05, 1] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      />
 
       <AnimatePresence mode="wait">
         {view === "landing" ? (
@@ -56,4 +72,3 @@ export default function App() {
     </div>
   );
 }
-

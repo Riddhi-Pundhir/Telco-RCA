@@ -42,15 +42,15 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
       </div>
 
       <div className="grid flex-1 gap-4 p-5 lg:grid-cols-[1.25fr_0.75fr]">
-        <div className="metric-chart rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+        <div className="metric-chart surface-card">
           <p className="soft-label">F1 + Precision / Recall</p>
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={metricsHistory}>
                 <defs>
                   <linearGradient id="f1Gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E8D1C5" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#E8D1C5" stopOpacity={0.02} />
+                    <stop offset="5%" stopColor="#D8D1C2" stopOpacity={0.42} />
+                    <stop offset="95%" stopColor="#D8D1C2" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -60,7 +60,7 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
                 <Area
                   type="monotone"
                   dataKey="f1"
-                  stroke="#E8D1C5"
+                  stroke="#D8D1C2"
                   fill="url(#f1Gradient)"
                   isAnimationActive
                   animationDuration={650}
@@ -68,7 +68,7 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
                 <Area
                   type="monotone"
                   dataKey="precision"
-                  stroke="#5DD39E"
+                  stroke="#6E8E73"
                   fill="transparent"
                   isAnimationActive
                   animationDuration={650}
@@ -76,7 +76,7 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
                 <Area
                   type="monotone"
                   dataKey="recall"
-                  stroke="#F2B950"
+                  stroke="#C7904D"
                   fill="transparent"
                   isAnimationActive
                   animationDuration={650}
@@ -87,7 +87,7 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
         </div>
 
         <div className="space-y-4">
-          <div className="metric-chart rounded-[1.5rem] border border-cream/10 bg-black/10 p-4">
+          <div className="metric-chart surface-card">
             <p className="soft-label">MTTR (steps)</p>
             <div className="mt-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -96,8 +96,8 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
                   <XAxis dataKey="name" tick={{ fill: "#F3E8DF", fontSize: 11 }} />
                   <YAxis tick={{ fill: "#F3E8DF", fontSize: 11 }} />
                   <Tooltip />
-                  <Bar dataKey="budget" fill="#57595B" radius={[10, 10, 0, 0]} isAnimationActive animationDuration={650} />
-                  <Bar dataKey="used" fill="#F56A6A" radius={[10, 10, 0, 0]} isAnimationActive animationDuration={650} />
+                  <Bar dataKey="budget" fill="#6E5D59" radius={[10, 10, 0, 0]} isAnimationActive animationDuration={650} />
+                  <Bar dataKey="used" fill="#B45C64" radius={[10, 10, 0, 0]} isAnimationActive animationDuration={650} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -123,4 +123,3 @@ export function MetricsPanel({ metricsHistory, runtimeState, observation, grade 
     </section>
   );
 }
-

@@ -127,6 +127,8 @@ Configure these in the Space settings instead of committing them:
 
 The React frontend uses same-origin API calls by default, so the Space does not need a separate frontend API base URL.
 
+The container healthcheck now uses `GET /ready`, which only flips healthy after the UI assets and task registry are confirmed.
+
 ### 2. Standard Local Environment
 ```bash
 pip install -r requirements.txt
@@ -171,6 +173,7 @@ The script writes a clean report and keeps a format example in:
 | Verb | Path | Output Signature |
 |:---|:---|:---|
 | `GET` | `/health` | Liveness constraint & versioning |
+| `GET` | `/ready` | Readiness check used by the Docker healthcheck and HF Space boot path |
 | `GET` | `/tasks` | Detailed metadata for all defined topology tasks |
 | `POST`| `/reset` | Bootstraps a chaotic graph state: `{"task": "hard", "seed": 42}` |
 | `POST`| `/step` | Evaluates diagnostics: `{"task": "hard", "action": {...}}` |

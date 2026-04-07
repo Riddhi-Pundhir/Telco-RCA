@@ -3,13 +3,17 @@ Telco-RCA Environment: Root Cause Analysis for 5G Network Failures
 ===================================================================
 
 Simulates cascading alarm storms in a realistic telecom network topology.
-The agent must identify the true root cause node among hundreds of symptom
-alarms, navigating a layered knowledge graph of physical and logical
-dependencies.
+The agent must identify the true root cause node among hundreds or thousands
+of symptom alarms, navigating a layered knowledge graph of physical and
+logical dependencies.
+
+Supported difficulty tiers: easy, medium, hard, and extreme.
+The extreme tier is designed for advanced agents requiring multi-hop
+reasoning under heavy noise.
 
 Topology:  Power Units → Core Switches → Radio Controllers → Cell Towers
 Failure model: when a parent node fails, ALL downstream children emit
-symptom alarms.  Noise alarms (transient/spurious) are injected at a
+symptom alarms. Noise alarms (transient/spurious) are injected at a
 configurable ratio to confound diagnosis.
 
 Key features:
@@ -40,6 +44,7 @@ class TelcoRCAEnvironment:
     Topology: Power Units → Core Switches → Radio Controllers → Cell Towers
     When a parent fails, all downstream children generate symptom alarms.
     Agent must diagnose the root cause without sending unnecessary repair crews.
+    Includes an extreme tier for advanced multi-hop reasoning under heavy noise.
     """
     ACTION_TIME_COST_S: dict[str, float] = {
         "CHECK_LOGS": 8.0,
@@ -54,16 +59,19 @@ class TelcoRCAEnvironment:
         "easy": 120.0,
         "medium": 75.0,
         "hard": 45.0,
+        "extreme": 35.0,
     }
     NOISE_TTL_S: dict[str, float] = {
         "easy": 45.0,
         "medium": 60.0,
         "hard": 50.0,
+        "extreme": 65.0,
     }
     NOISE_SPAWN_PROB: dict[str, float] = {
         "easy": 0.0,
         "medium": 0.08,
         "hard": 0.15,
+        "extreme": 0.22,
     }
 
     def __init__(self, task_name: str = "easy"):
@@ -227,6 +235,9 @@ class TelcoRCAEnvironment:
         Returns:
             (nodes_dict, edge_list, region_dict)
         """
+        if num_nodes > 1500:
+            raise ValueError("num_nodes too large — may cause performance issues")
+
         nodes: dict[str, NetworkNode] = {}
         edges: list[tuple[str, str]] = []
         regions: dict[str, list[str]] = {f"region_{i}": [] for i in range(num_regions)}
@@ -510,7 +521,12 @@ class TelcoRCAEnvironment:
         noise_alarms: list[Alarm] = []
         used_nodes: set[str] = set()
         alarm_counter = starting_alarm_counter
-        max_cluster_size = 3 if self.task_name == "medium" else 6
+        if self.task_name == "medium":
+            max_cluster_size = 3
+        elif self.task_name == "extreme":
+            max_cluster_size = 8
+        else:
+            max_cluster_size = 6
 
         while len(noise_alarms) < target_noise:
             available_anchors = [
@@ -834,7 +850,7 @@ class TelcoRCAEnvironment:
             return {}
 
         node_ids = sorted(s.nodes.keys())
-        max_nodes = 150
+        max_nodes = 100
         included_node_ids = node_ids[:max_nodes]
         included_node_set = set(included_node_ids)
 

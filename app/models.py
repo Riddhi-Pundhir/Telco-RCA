@@ -150,6 +150,25 @@ TASK_CONFIGS: dict[str, TaskConfig] = {
         noise_ratio=0.4,
         num_regions=5,
     ),
+    # Extreme tier simulates real-world worst-case outage scenarios:
+    # - High alarm noise (60%)
+    # - Large topology (1000 nodes)
+    # - Requires deep traversal + filtering
+    "extreme": TaskConfig(
+        name="extreme",
+        description=(
+            "EXTREME: Designed for advanced agents requiring multi-hop reasoning under heavy noise. "
+            "A worst-case outage is unfolding across a 1000-node, 8-region 5G network. "
+            "Failures may originate in the power, transport, or radio control layers while 60% "
+            "alarm noise creates convincing false incident clusters. Traverse deep dependency paths, "
+            "filter spurious alerts, and isolate the true root cause within 75 steps."
+        ),
+        num_nodes=1000,
+        max_steps=75,
+        failure_layers=["power_unit", "core_switch", "radio_controller"],
+        noise_ratio=0.6,
+        num_regions=8,
+    ),
 }
 
 

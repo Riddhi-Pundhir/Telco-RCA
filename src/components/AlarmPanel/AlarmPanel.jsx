@@ -46,13 +46,15 @@ export function AlarmPanel({ alarms, totalAlarmCount, selectedNodeId, onSelectNo
                 } ${alarm.severity === "CRITICAL" ? "alarm-critical" : ""}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     <div className="mt-0.5 rounded-full border border-cream/10 bg-black/15 p-2">
                       <BellRing className="h-4 w-4 text-bronze" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-display text-2xl font-semibold text-cream">{alarm.node_id}</p>
+                        <p className="break-anywhere font-display text-[1.7rem] font-semibold leading-none text-cream">
+                          {alarm.node_id}
+                        </p>
                         <span className="rounded-full border border-cream/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-cream/70">
                           {alarm.severity}
                         </span>
@@ -62,10 +64,12 @@ export function AlarmPanel({ alarms, totalAlarmCount, selectedNodeId, onSelectNo
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-cream/68">{alarm.message}</p>
+                      <p className="clamp-3 break-anywhere mt-2 text-sm leading-6 text-cream/68">
+                        {alarm.message}
+                      </p>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-[0.22em] text-cream/45">
+                  <span className="shrink-0 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.22em] text-cream/45">
                     {formatAlarmTime(alarm.timestamp)}
                   </span>
                 </div>

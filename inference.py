@@ -16,9 +16,12 @@ Usage:
     python inference.py
 
 Environment variables:
-    API_BASE_URL   LLM endpoint  (default: https://api.anthropic.com/v1)
-    MODEL_NAME     Model string  (default: claude-sonnet-4-20250514)
-    HF_TOKEN       API key
+    API_BASE_URL      LLM endpoint  (default: https://api.openai.com/v1)
+    MODEL_NAME        Model string  (default: claude-sonnet-4-20250514)
+    HF_TOKEN          API key alias
+    OPENAI_API_KEY    API key alias
+    SERVER_URL        Environment server URL (default: http://localhost:7860)
+    INTERNAL_API_TOKEN Optional token for /state/internal
 """
 
 import json
@@ -29,14 +32,18 @@ import re
 from openai import OpenAI
 
 # ── Config ────────────────────────────────────────────────────────────
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.anthropic.com/v1")
-MODEL_NAME   = os.environ.get("MODEL_NAME",   "claude-sonnet-4-20250514")
-HF_TOKEN     = os.environ.get("HF_TOKEN",     "")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.environ.get("MODEL_NAME", "claude-sonnet-4-20250514")
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN", "")
 
-# Server (local for testing; swap for HF Space URL in prod)
-SERVER_URL = os.environ.get("SERVER_URL", "https://ayushman098-telco-rca.hf.space/")
+SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:7860")
 
-client = OpenAI(api_key=HF_TOKEN or "placeholder", base_url=API_BASE_URL)
+client = OpenAI(
+    api_key=HF_TOKEN or OPENAI_API_KEY or "placeholder",
+    base_url=API_BASE_URL,
+)
 
 # ── HTTP helpers ──────────────────────────────────────────────────────
 import urllib.request
@@ -55,9 +62,14 @@ def _post(path: str, body: dict) -> dict:
         return json.loads(r.read())
 
 
-def _get(path: str) -> dict:
+def _get(path: str, headers: dict[str, str] | None = None) -> dict:
     url = f"{SERVER_URL.rstrip('/')}/{path.lstrip('/')}"
-    with urllib.request.urlopen(url, timeout=10) as r:
+    req = urllib.request.Request(
+        url,
+        headers=headers or {},
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=10) as r:
         return json.loads(r.read())
 
 
@@ -226,8 +238,8 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
             nid = info["node_id"]
             # Already tried restarting this one?
             if not any(
-                hh.get("action", {}).get("target_node_id") == nid
-                and hh.get("action", {}).get("action_type") in ("RESTART", "DIAGNOSE")
+                hh.get("target_node_id") == nid
+                and hh.get("action_type") in ("RESTART", "DIAGNOSE")
                 for hh in history
             ):
                 return {"action_type": "DIAGNOSE", "target_node_id": nid}
@@ -243,92 +255,180 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
 TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44}
 
 
-def log_start(task: str, env: str, model: str) -> None:
-    print(f"[START] task={task} env={env} model={model}", flush=True)
+def emit(tag: str, payload: dict) -> None:
+    print(f"{tag} {json.dumps(payload)}", flush=True)
 
 
-def log_step(step: int, action: str, reward: float, done: bool, error: str | None) -> None:
-    error_val = error if error else "null"
-    done_val = str(done).lower()
-    print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
-        flush=True,
-    )
+def log_start(tasks: list[str]) -> None:
+    emit("[START]", {"tasks": tasks, "model": MODEL_NAME, "server": SERVER_URL})
 
 
-def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+def log_step(payload: dict) -> None:
+    emit("[STEP]", payload)
 
 
-def run_episode(task: str) -> float:
+def log_end(payload: dict) -> None:
+    emit("[END]", payload)
+
+
+def run_episode(task: str) -> dict:
     """Run one full episode and emit stdout tags for OpenEnv validation."""
     seed = TASK_SEEDS.get(task, 42)
     obs = _post("/reset", {"task": task, "seed": seed})
 
-    history = []
+    prompt_history = []
     rewards_list = []
     step_num = 0
     done = False
     start_time = time.time()
-    
     max_steps = {"easy": 15, "medium": 30, "hard": 50}.get(task, 30)
 
-    log_start(task=task, env="telco-rca", model=MODEL_NAME)
+    log_step({"event": "episode_start", "task": task})
 
     info = {}
+    trajectory = {
+        "task": task,
+        "steps_taken": 0,
+        "total_reward": 0.0,
+        "root_cause_fixed": False,
+        "correct_diagnosis": False,
+        "false_positives": 0,
+        "elapsed_seconds": 0.0,
+        "root_cause_id": None,
+        "root_cause_layer": None,
+        "checked_nodes": [],
+        "checked_layers": [],
+        "total_nodes": 0,
+        "total_layers_alarming": 0,
+        "action_log": [],
+    }
+    root_cause_id = None
+    root_cause_layer = None
     while not done and step_num < max_steps:
         step_num += 1
-        action = llm_decide(obs, history)
-
-        # Build action string without spaces for the STDOUT log
+        action = llm_decide(obs, prompt_history)
         action_type = action.get("action_type", "")
         target_node = action.get("target_node_id", "")
-        action_str = f"{action_type}('{target_node}')"
 
         result = _post("/step", {"task": task, "action": action})
-        reward = result["reward"]
-        done = result["done"]
+        reward = float(result["reward"])
+        done = bool(result["done"])
         info = result.get("info", {})
         obs = result["observation"]
 
         rewards_list.append(reward)
-        error_msg = info.get("error")
+        prompt_history.append(
+            {
+                "step": step_num,
+                "action_type": action_type,
+                "target_node_id": target_node,
+                "reward": reward,
+                "done": done,
+                "steps_remaining": obs.get("steps_remaining"),
+                "false_positives": obs.get("false_positives_so_far"),
+                "info": info,
+            }
+        )
 
-        history.append({
-            "step": step_num,
-            "action": action,
-            "reward": reward,
-            "info": info,
-        })
-        history.append({"action_type": action_type, "target_node_id": target_node}) # For action log in grader
-
-        log_step(step=step_num, action=action_str, reward=reward, done=done, error=error_msg)
+        log_step(
+            {
+                "task": task,
+                "step": step_num,
+                "action_type": action_type,
+                "target_node": target_node,
+                "reward": reward,
+                "done": done,
+                "steps_remaining": obs.get("steps_remaining"),
+                "false_positives": obs.get("false_positives_so_far"),
+                "info": info,
+            }
+        )
 
     # Grade the episode
-    try:
-        env_state = _get(f"/state?task={task}")
-        trajectory = {
-            "task": task,
+    trajectory.update(
+        {
             "steps_taken": step_num,
             "total_reward": round(sum(rewards_list), 4),
             "root_cause_fixed": bool(info.get("result") == "ROOT_CAUSE_FIXED"),
             "correct_diagnosis": bool(info.get("result") == "CORRECT_DIAGNOSIS"),
             "false_positives": obs.get("false_positives_so_far", 0),
             "elapsed_seconds": round(time.time() - start_time, 2),
-            "root_cause_id": env_state.get("root_cause_id"),
-            "action_log": history,
+        }
+    )
+    try:
+        env_state = _get(f"/state?task={task}")
+        internal_state = None
+        if INTERNAL_API_TOKEN:
+            try:
+                internal_state = _get(
+                    f"/state/internal?task={task}",
+                    headers={"X-Admin-Token": INTERNAL_API_TOKEN},
+                )
+            except Exception:
+                internal_state = None
+
+        root_cause_id = env_state.get("root_cause_id") or (
+            internal_state.get("root_cause_id") if internal_state else None
+        )
+        root_cause_layer = (
+            env_state.get("root_cause_layer")
+            or (internal_state.get("root_cause_layer") if internal_state else None)
+            or info.get("root_cause_layer")
+        )
+        trajectory = {
+            "task": task,
+            "steps_taken": env_state.get("steps_taken", step_num),
+            "total_reward": round(sum(rewards_list), 4),
+            "root_cause_fixed": bool(info.get("result") == "ROOT_CAUSE_FIXED"),
+            "correct_diagnosis": bool(info.get("result") == "CORRECT_DIAGNOSIS"),
+            "false_positives": env_state.get("false_positives", obs.get("false_positives_so_far", 0)),
+            "elapsed_seconds": round(time.time() - start_time, 2),
+            "root_cause_id": root_cause_id,
+            "root_cause_layer": root_cause_layer,
+            "checked_nodes": env_state.get("checked_nodes", []),
+            "checked_layers": env_state.get("checked_layers", []),
+            "total_nodes": env_state.get("total_nodes", 0),
+            "total_layers_alarming": env_state.get("total_layers_alarming", 0),
+            "action_log": env_state.get("action_log", []),
         }
         grade_resp = _post("/grade", {"task": task, "trajectory": trajectory})
         score = grade_resp.get("score", 0.0)
+        breakdown = grade_resp.get("breakdown", {})
     except Exception as e:
         print(f"[DEBUG] Failed to grade: {e}", file=sys.stderr)
         score = 0.0
+        breakdown = {}
+        root_cause_id = None
+        root_cause_layer = None
 
-    success = score > 0.0
-    log_end(success=success, steps=step_num, score=score, rewards=rewards_list)
+    episode_result = {
+        "task": task,
+        "steps_taken": trajectory["steps_taken"],
+        "total_reward": round(sum(rewards_list), 4),
+        "root_cause_fixed": trajectory["root_cause_fixed"],
+        "correct_diagnosis": trajectory["correct_diagnosis"],
+        "false_positives": trajectory["false_positives"],
+        "elapsed_seconds": round(time.time() - start_time, 2),
+        "root_cause_id": root_cause_id,
+        "root_cause_layer": root_cause_layer,
+        "score": score,
+        "breakdown": breakdown,
+    }
 
-    return score
+    log_step(
+        {
+            "event": "episode_end",
+            "task": task,
+            "score": score,
+            "steps_taken": episode_result["steps_taken"],
+            "false_positives": episode_result["false_positives"],
+            "root_cause_id": root_cause_id,
+            "root_cause_layer": root_cause_layer,
+            "breakdown": breakdown,
+        }
+    )
+
+    return episode_result
 
 
 def main():
@@ -336,27 +436,25 @@ def main():
     # When running locally without TASK_NAME, run all three tasks.
     task = os.environ.get("TASK_NAME", "")
     if task:
-        score = run_episode(task)
-        return score
+        tasks = [task]
+    else:
+        tasks = ["easy", "medium", "hard"]
 
-    # Run all tasks and report aggregate
-    scores = {}
-    for t in ["easy", "medium", "hard"]:
-        print(f"\n{'='*50}", flush=True)
-        print(f"Running task: {t.upper()}", flush=True)
-        print(f"{'='*50}", flush=True)
-        scores[t] = run_episode(t)
-        time.sleep(1)  # brief pause between tasks
+    log_start(tasks)
 
-    print(f"\n{'='*50}", flush=True)
-    print("FINAL SCORES:", flush=True)
-    for t, s in scores.items():
-        print(f"  {t}: {s:.3f}", flush=True)
-    print(f"  average: {sum(scores.values())/len(scores):.3f}", flush=True)
-    print(f"{'='*50}", flush=True)
-    return sum(scores.values()) / len(scores)
+    results = []
+    for t in tasks:
+        results.append(run_episode(t))
+
+    average_score = round(sum(result["score"] for result in results) / len(results), 4) if results else 0.0
+    log_end({"results": results, "average_score": average_score, "model": MODEL_NAME})
+    return average_score
 
 
 if __name__ == "__main__":
-    score = main()
-    sys.exit(0 if score > 0 else 1)
+    try:
+        main()
+    except Exception as exc:
+        print(f"[DEBUG] inference failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)

@@ -91,6 +91,56 @@ class StepResult(BaseModel):
     info: dict
 
 
+class TrajectoryStep(BaseModel):
+    """A single step in the solved episode trajectory."""
+    step: int
+    action_type: Literal["CHECK_LOGS", "CHECK_VOLTAGE", "RESTART", "DIAGNOSE", "TRACE_PATH"]
+    target_node_id: str
+    target_layer: str | None = None
+    target_region: str | None = None
+    simulation_time_s: float = 0.0
+    time_advanced_s: float = 0.0
+    reward: float
+    reward_breakdown: dict = Field(default_factory=dict)
+    result: str | None = None
+    path_nodes: list[str] = Field(default_factory=list)
+    false_positives_total: int = 0
+    done: bool = False
+
+
+class TrajectoryNodeHeatmap(BaseModel):
+    """Aggregate visitation metadata for a graph node."""
+    node_id: str
+    layer: str
+    region: str
+    status_name: str
+    visit_count: float
+    first_seen_step: int
+    last_seen_step: int
+    is_checked: bool = False
+    is_alarm_source: bool = False
+    intensity: float = 0.0
+
+
+class TrajectoryResponse(BaseModel):
+    """Structured trajectory payload for visualization endpoints."""
+    task: str
+    episode_done: bool
+    total_steps: int
+    elapsed_seconds: float
+    simulation_time_s: float
+    total_reward: float
+    unique_nodes_checked: int
+    unique_layers_checked: int
+    path_nodes: list[str] = Field(default_factory=list)
+    path_segments: list[dict] = Field(default_factory=list)
+    reward_series: list[dict] = Field(default_factory=list)
+    step_log: list[TrajectoryStep] = Field(default_factory=list)
+    heatmap: list[TrajectoryNodeHeatmap] = Field(default_factory=list)
+    graph: dict = Field(default_factory=dict)
+    summary: dict = Field(default_factory=dict)
+
+
 # ------------------------------------------------------------------ #
 #  Task configuration                                                  #
 # ------------------------------------------------------------------ #
@@ -196,3 +246,4 @@ class EpisodeState:
     regions: dict[str, list[str]] = field(default_factory=dict)
     # Action history for grading intelligence signals
     action_log: list[dict] = field(default_factory=list)
+    trajectory_log: list[dict] = field(default_factory=list)

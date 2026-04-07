@@ -64,6 +64,10 @@ function countNodeHighlights(nodes) {
       if (node.data?.isSelected || node.data?.isSuspect || node.data?.isConfirmedRoot) {
         accumulator.hot = true;
       }
+      if (node.data?.isTrajectoryHit || node.data?.isTrajectoryPath) {
+        accumulator.hot = true;
+        accumulator.trajectory = (accumulator.trajectory ?? 0) + 1;
+      }
       return accumulator;
     },
     {
@@ -71,6 +75,7 @@ function countNodeHighlights(nodes) {
       failed: 0,
       degraded: 0,
       hot: false,
+      trajectory: 0,
     },
   );
   summary.hot = summary.hot || summary.alarms > 0 || summary.failed > 0 || summary.degraded > 0;
@@ -261,6 +266,9 @@ export function buildCategorizedGraphElements({
       if (highlightInfo.alarms) {
         layerSummaryBits.push(pluralize(highlightInfo.alarms, "alarm"));
       }
+      if (highlightInfo.trajectory) {
+        layerSummaryBits.push(pluralize(highlightInfo.trajectory, "trajectory hit"));
+      }
 
       layerNodes.push(
         buildCategoryNode({
@@ -280,6 +288,9 @@ export function buildCategorizedGraphElements({
     const regionSummaryBits = [pluralize(layerOrder.length, "group"), pluralize(regionNodes.length, "node")];
     if (regionHighlightInfo.alarms) {
       regionSummaryBits.push(pluralize(regionHighlightInfo.alarms, "alarm"));
+    }
+    if (regionHighlightInfo.trajectory) {
+      regionSummaryBits.push(pluralize(regionHighlightInfo.trajectory, "trajectory hit"));
     }
 
     rootNodes.push(

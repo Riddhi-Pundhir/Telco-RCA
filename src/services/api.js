@@ -24,6 +24,13 @@ export async function getState(task) {
   return data;
 }
 
+export async function getTrajectory(task) {
+  const { data } = await apiClient.get("/trajectory", {
+    params: { task },
+  });
+  return data;
+}
+
 export async function getTasks() {
   const { data } = await apiClient.get("/tasks");
   return data;
@@ -33,4 +40,3 @@ export async function gradeSimulation(payload) {
   const { data } = await apiClient.post("/grade", payload);
   return data;
 }
-

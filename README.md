@@ -175,6 +175,7 @@ The script writes a clean report and keeps a format example in:
 | `POST`| `/reset` | Bootstraps a chaotic graph state: `{"task": "hard", "seed": 42}` |
 | `POST`| `/step` | Evaluates diagnostics: `{"task": "hard", "action": {...}}` |
 | `GET` | `/state` | Safe runtime state for the dashboard and grading inputs; does not expose the hidden root cause |
+| `GET` | `/trajectory` | Structured trajectory data for the solved path, timing, and reward breakdown |
 | `GET` | `/state/internal` | Optional token-protected debug state; send `X-Admin-Token` |
 | `POST`| `/grade` | Calculates explicit precision/recall F1 scores mapped to MTTR |
 

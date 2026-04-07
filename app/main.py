@@ -5,6 +5,7 @@ Endpoints:
     POST /reset    — Start a new episode for a given task
     POST /step     — Execute an agent action
     GET  /state    — Sanitized runtime state for UI/grading inputs
+    GET  /trajectory — Structured trajectory data for visualization
     GET  /state/internal — Token-protected debug state with answer key
     GET  /tasks    — List all available tasks
     GET  /health   — Liveness check
@@ -166,6 +167,13 @@ def state(task: str = "easy"):
     if task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{task}'.")
     return _get_env(task).state()
+
+
+@app.get("/trajectory")
+def trajectory(task: str = "easy"):
+    if task not in TASK_CONFIGS:
+        raise HTTPException(400, f"Unknown task '{task}'.")
+    return _get_env(task).trajectory()
 
 
 @app.get("/state/internal")

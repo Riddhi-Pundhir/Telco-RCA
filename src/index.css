@@ -390,6 +390,18 @@ body {
   box-shadow: 0 0 0 1px rgba(216, 209, 194, 0.1), 0 0 32px rgba(184, 138, 106, 0.12);
 }
 
+.telecom-node.trajectory-hit {
+  border-color: rgba(199, 144, 77, 0.42);
+  box-shadow: 0 0 0 1px rgba(199, 144, 77, 0.1), 0 0 30px rgba(199, 144, 77, 0.12);
+}
+
+.telecom-node.trajectory-path {
+  border-color: rgba(199, 144, 77, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(199, 144, 77, 0.2),
+    0 0 28px rgba(199, 144, 77, 0.18);
+}
+
 .telecom-node.pulse::after {
   content: "";
   position: absolute;

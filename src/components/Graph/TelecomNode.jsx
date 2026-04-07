@@ -34,6 +34,8 @@ export function TelecomNode({ data }) {
     data.isHighlighted ? "highlighted" : "",
     data.isSuspect ? "suspect pulse" : "",
     data.isConfirmedRoot ? "confirmed pulse" : "",
+    data.isTrajectoryPath ? "trajectory-path" : "",
+    data.isTrajectoryHit ? "trajectory-hit" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -62,6 +64,16 @@ export function TelecomNode({ data }) {
         <span>{data.region}</span>
         <span>{formatPercentage(data.suspicionScore ?? 0)}</span>
       </div>
+      {data.trajectoryVisitCount ? (
+        <div className="mt-3 flex justify-between">
+          <span className="rounded-full border border-black/10 bg-black/5 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-black/70">
+            Trajectory
+          </span>
+          <span className="rounded-full border border-black/10 bg-black/5 px-2.5 py-1 text-[0.75rem] font-semibold text-black/70">
+            x{Number(data.trajectoryVisitCount).toFixed(1).replace(/\.0$/, "")}
+          </span>
+        </div>
+      ) : null}
       <Handle type="source" position={Position.Right} style={{ opacity: 0, pointerEvents: "none" }} />
     </div>
   );

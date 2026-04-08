@@ -51,13 +51,14 @@ Telco-RCA models that workflow in a way that is useful for:
 
 ## One result worth showing
 
-| Snapshot | Value |
-|:---|:---|
-| Extreme tier | 1000 nodes |
-| Noise | 60% |
-| Baseline mean score | 0.9980 |
-| Successful runs | 8/8 |
-| Mean MTTR | 26.19s |
+The exact structured benchmark excerpt is archived in [`artifacts/baseline_snapshot.txt`](artifacts/baseline_snapshot.txt).
+
+| Task | Steps | Score | Outcome |
+|:---|:---:|:---:|:---|
+| `easy` | 14 | 0.09 | Succeeds after a longer diagnostic sweep |
+| `medium` | 8 | 0.97 | Clean recovery with strong confidence |
+| `hard` | 13 | 1.00 | Correct diagnosis and repair |
+| `extreme` | 17 | 1.00 | Worst-case tier solved under heavy noise |
 
 That is the kind of result that makes the environment feel benchmark-ready, not just visually polished.
 

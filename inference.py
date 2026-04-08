@@ -36,16 +36,16 @@ import re
 from openai import OpenAI
 
 # ── Config ────────────────────────────────────────────────────────────
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "claude-sonnet-4-20250514")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN", "")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "claude-sonnet-4-20250514")
+HF_TOKEN = os.getenv("HF_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "")
 
-SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:7860")
+SERVER_URL = os.getenv("SERVER_URL", "http://localhost:7860")
 
 client = OpenAI(
-    api_key=HF_TOKEN or OPENAI_API_KEY or "placeholder",
+    api_key=HF_TOKEN or OPENAI_API_KEY or "no-key",
     base_url=API_BASE_URL,
 )
 
@@ -238,7 +238,7 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
     # If we've checked everything, look at history for critical voltage readings
     for h in reversed(history):
         info = h.get("info", {})
-        if info.get("status") == "CRITICAL" and "node_id" in info:
+        if info.get("status") == "CRITICAL" and "node_id" in info:      # Note: only CHECK_VOLTAGE sets status="CRITICAL"; CHECK_LOGS returns "FAILED"/"DEGRADED" so this never triggers from log history
             nid = info["node_id"]
             # Already tried restarting this one?
             if not any(

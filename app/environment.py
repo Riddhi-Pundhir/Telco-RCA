@@ -1034,7 +1034,11 @@ class TelcoRCAEnvironment:
 
         node_ids = sorted(s.nodes.keys())
         max_nodes = 100
-        included_node_ids = node_ids[:max_nodes]
+        alarming_node_ids = {alarm.node_id for alarm in s.active_alarms}
+        def _priority_key(nid):
+            node = s.nodes[nid]
+            return (0 if node.status == "FAILED" else 1 if nid in alarming_node_ids else 2, nid)
+        included_node_ids = sorted(s.nodes.keys(), key=_priority_key)[:max_nodes]
         included_node_set = set(included_node_ids)
 
         depth_map: dict[str, int] = {}

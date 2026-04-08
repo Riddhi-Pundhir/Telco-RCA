@@ -34,7 +34,7 @@ function buildProjectedMetrics({ state, grade, explainability }) {
   const precision =
     grade?.score > 0
       ? actualPrecision
-      : Math.max(0.08, Math.min(0.98, liveConfidence - falsePositivePenalty + 0.12));
+      : Math.max(0.08, Math.min(0.98, liveConfidence - falsePositivePenalty + 0.15));
   const recall =
     grade?.score > 0
       ? actualRecall

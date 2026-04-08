@@ -291,3 +291,23 @@ The repository includes:
 ## License
 
 MIT
+Create a premium 16:9 product demo animation for a telecom root-cause analysis dashboard.
+
+Style:
+deep burgundy background, warm ivory typography, gold and red accents, elegant motion-design, enterprise-grade, clean, high contrast, minimal clutter.
+
+Storyboard:
+1. "Here’s the outage" — a root fault glows red on the left side of a network cascade.
+2. "Look at the chaos" — alarm clusters spread outward across the dependency graph.
+3. "Watch the agent think" — a glowing agent path traces logs, voltage checks, and upstream tracing.
+4. "Boom — root cause found" — the true root-cause node is repaired and the cascade collapses.
+
+Camera and motion:
+slow zooms, subtle parallax, smooth fades between beats, gentle glow effects, seamless loop.
+
+Important:
+keep the composition readable, leave space for captions, avoid gibberish text, avoid extra UI clutter, and make the final result feel like a polished product launch video.
+
+## Credits
+
+Riddhi Pundhir & Ayushman Sahoo & Saranya Uduthuri

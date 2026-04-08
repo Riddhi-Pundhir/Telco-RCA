@@ -26,11 +26,18 @@ export function GraphPanel({
 }) {
   const [expandedCategoryIds, setExpandedCategoryIds] = useState(() => new Set());
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const [graphRequested, setGraphRequested] = useState(false);
 
   const selectedNode = useMemo(
     () => flow.nodes.find((node) => node.id === selectedNodeId) ?? null,
     [flow.nodes, selectedNodeId],
   );
+
+  useEffect(() => {
+    if (!flow.nodes.length) {
+      setGraphRequested(false);
+    }
+  }, [flow.nodes.length]);
 
   const toggleCategory = useCallback((categoryId) => {
     setExpandedCategoryIds((current) => {
@@ -45,20 +52,37 @@ export function GraphPanel({
   }, []);
 
   const categorizedGraph = useMemo(
-    () =>
-      buildCategorizedGraphElements({
+    () => {
+      if (!graphRequested || !flow.nodes.length) {
+        return {
+          nodes: [],
+          edges: [],
+          visibleLeafCount: 0,
+        };
+      }
+
+      return buildCategorizedGraphElements({
         nodes: flow.nodes,
         selectedNodeId,
         explainability,
         state: runtimeState,
         expandedCategoryIds,
         onToggleCategory: toggleCategory,
-      }),
-    [flow.nodes, selectedNodeId, explainability, runtimeState, expandedCategoryIds, toggleCategory],
+      });
+    },
+    [
+      flow.nodes,
+      selectedNodeId,
+      explainability,
+      runtimeState,
+      expandedCategoryIds,
+      toggleCategory,
+      graphRequested,
+    ],
   );
 
   useEffect(() => {
-    if (!reactFlowInstance || !categorizedGraph.nodes.length) {
+    if (!graphRequested || !reactFlowInstance || !categorizedGraph.nodes.length) {
       return undefined;
     }
 
@@ -70,7 +94,7 @@ export function GraphPanel({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [reactFlowInstance, categorizedGraph.nodes.length, categorizedGraph.edges.length]);
+  }, [graphRequested, reactFlowInstance, categorizedGraph.nodes.length, categorizedGraph.edges.length]);
 
   return (
     <section className="panel-shell flex min-h-[34rem] flex-col overflow-hidden">
@@ -101,7 +125,7 @@ export function GraphPanel({
 
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-0">
         <div className="flow-shell telecom-grid relative min-h-[28rem] min-w-0">
-          {categorizedGraph.nodes.length ? (
+          {graphRequested && categorizedGraph.nodes.length ? (
             <ReactFlow
               nodes={categorizedGraph.nodes}
               edges={categorizedGraph.edges}
@@ -144,11 +168,24 @@ export function GraphPanel({
             </ReactFlow>
           ) : (
             <div className="flex h-full items-center justify-center p-8 text-center text-sm text-cream/55">
-              Launch a simulation to render the live dependency graph.
+              <div className="max-w-md rounded-[1.6rem] border border-cream/12 bg-black/15 p-6 shadow-soft backdrop-blur-xl">
+                <p className="section-title">Graph Rendered On Demand</p>
+                <p className="mt-3 text-sm leading-6 text-cream/65">
+                  The dependency graph stays lightweight until you ask for it. Click below to
+                  render the live graph, category nodes, and path evidence.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setGraphRequested(true)}
+                  className="mt-5 inline-flex items-center justify-center rounded-full border border-bronze/40 bg-bronze/15 px-4 py-2 text-sm font-semibold text-bronze transition hover:bg-bronze/25"
+                >
+                  Render graph
+                </button>
+              </div>
             </div>
           )}
 
-          {!selectedNode && categorizedGraph.nodes.length ? (
+          {!selectedNode && graphRequested && categorizedGraph.nodes.length ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -166,7 +203,7 @@ export function GraphPanel({
               <p className="soft-label">Visible telecom nodes</p>
               <p className="mt-2 flex items-center gap-2 text-base font-semibold text-cream">
                 <RadioTower className="h-4 w-4 text-bronze" />
-                {categorizedGraph.visibleLeafCount} visible nodes
+                {graphRequested ? `${categorizedGraph.visibleLeafCount} visible nodes` : "Render graph to count"}
               </p>
             </div>
             <div className="rounded-[1.2rem] border border-cream/12 bg-[#261718]/75 px-4 py-3 shadow-soft backdrop-blur-xl">

@@ -115,7 +115,7 @@ HIGHEST-layer node that is actually broken. Downstream alarms are just symptoms.
 6. Use DIAGNOSE when fairly confident, RESTART only when very certain.
 7. Be EFFICIENT — minimize wasted steps. Every false restart is heavily penalized.
 
-## Important — Alarm Noise (40% of alarms are false):
+## Important — Alarm Noise (varies by difficulty: easy=0%, medium=20%, hard=40%, extreme=60%):
 Some alarms are noise injected to mislead you. Signs of noise alarms:
 - Alarm on a leaf node (TOWER_) when its parent (RC_) shows no fault
 - Alarm severity doesn't match the node's actual voltage/status readings
@@ -256,7 +256,7 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
 
 
 # Fixed seeds for reproducible baseline runs
-TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44, "extreme": 45}
+TASK_SEEDS = {"easy": 42, "medium": 1042, "hard": 2042, "extreme": 3042}
 DEFAULT_TASK_MAX_STEPS = {"easy": 15, "medium": 30, "hard": 50, "extreme": 75}
 _TASK_CATALOG_CACHE: dict[str, dict] | None = None
 
@@ -294,20 +294,39 @@ def _task_max_steps(task: str) -> int:
         return 30
 
 
-def emit(tag: str, payload: dict) -> None:
-    print(f"{tag} {json.dumps(payload)}", flush=True)
+BENCHMARK = "telco-rca"
 
 
-def log_start(tasks: list[str]) -> None:
-    emit("[START]", {"tasks": tasks, "model": MODEL_NAME, "server": SERVER_URL})
+# ── Spec-compliant stdout logging ─────────────────────────────────────
+# Format required by OpenEnv evaluator:
+#   [START] task=<name> env=<benchmark> model=<model>
+#   [STEP]  step=<n> action=<str> reward=<0.00> done=<true|false> error=<msg|null>
+#   [END]   success=<true|false> steps=<n> score=<0.00> rewards=<r1,r2,...>
+
+def _fmt_bool(v: bool) -> str:
+    return "true" if v else "false"
 
 
-def log_step(payload: dict) -> None:
-    emit("[STEP]", payload)
+def log_start(task: str) -> None:
+    print(f"[START] task={task} env={BENCHMARK} model={MODEL_NAME}", flush=True)
 
 
-def log_end(payload: dict) -> None:
-    emit("[END]", payload)
+def log_step_line(step: int, action: str, reward: float, done: bool, error) -> None:
+    err_str = "null" if error is None else str(error).replace("\n", " ")
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} "
+        f"done={_fmt_bool(done)} error={err_str}",
+        flush=True,
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(
+        f"[END] success={_fmt_bool(success)} steps={steps} "
+        f"score={score:.2f} rewards={rewards_str}",
+        flush=True,
+    )
 
 
 def run_episode(task: str) -> dict:
@@ -322,7 +341,8 @@ def run_episode(task: str) -> dict:
     start_time = time.time()
     max_steps = _task_max_steps(task)
 
-    log_step({"event": "episode_start", "task": task})
+    # Emit spec-required [START] line for this episode
+    log_start(task)
 
     info = {}
     trajectory = {
@@ -343,17 +363,28 @@ def run_episode(task: str) -> dict:
     }
     root_cause_id = None
     root_cause_layer = None
+    last_error = None
+
     while not done and step_num < max_steps:
         step_num += 1
         action = llm_decide(obs, prompt_history)
         action_type = action.get("action_type", "")
         target_node = action.get("target_node_id", "")
+        action_str = f"{action_type}({target_node!r})"
 
-        result = _post("/step", {"task": task, "action": action})
-        reward = float(result["reward"])
-        done = bool(result["done"])
-        info = result.get("info", {})
-        obs = result["observation"]
+        last_error = None
+        try:
+            result = _post("/step", {"task": task, "action": action})
+            reward = float(result["reward"])
+            done = bool(result["done"])
+            info = result.get("info", {})
+            obs = result["observation"]
+            # Capture any action-level error from the environment
+            last_error = info.get("error") or info.get("last_action_error")
+        except Exception as exc:
+            reward = 0.0
+            last_error = str(exc)
+            done = True
 
         rewards_list.append(reward)
         prompt_history.append(
@@ -369,19 +400,8 @@ def run_episode(task: str) -> dict:
             }
         )
 
-        log_step(
-            {
-                "task": task,
-                "step": step_num,
-                "action_type": action_type,
-                "target_node": target_node,
-                "reward": reward,
-                "done": done,
-                "steps_remaining": obs.get("steps_remaining"),
-                "false_positives": obs.get("false_positives_so_far"),
-                "info": info,
-            }
-        )
+        # Emit spec-required [STEP] line
+        log_step_line(step_num, action_str, reward, done, last_error)
 
     # Grade the episode
     trajectory.update(
@@ -394,6 +414,8 @@ def run_episode(task: str) -> dict:
             "elapsed_seconds": round(time.time() - start_time, 2),
         }
     )
+    score = 0.0
+    breakdown = {}
     try:
         env_state = _get(f"/state?task={task}")
         internal_state = None
@@ -406,8 +428,10 @@ def run_episode(task: str) -> dict:
             except Exception:
                 internal_state = None
 
-        root_cause_id = env_state.get("root_cause_id") or (
-            internal_state.get("root_cause_id") if internal_state else None
+        root_cause_id = (
+            env_state.get("root_cause_id")
+            or (internal_state.get("root_cause_id") if internal_state else None)
+            or info.get("root_cause_id")
         )
         root_cause_layer = (
             env_state.get("root_cause_layer")
@@ -440,6 +464,11 @@ def run_episode(task: str) -> dict:
         root_cause_id = None
         root_cause_layer = None
 
+    success = (
+        trajectory.get("root_cause_fixed", False)
+        or trajectory.get("correct_diagnosis", False)
+    )
+
     episode_result = {
         "task": task,
         "steps_taken": trajectory["steps_taken"],
@@ -452,20 +481,12 @@ def run_episode(task: str) -> dict:
         "root_cause_layer": root_cause_layer,
         "score": score,
         "breakdown": breakdown,
+        "success": success,
+        "rewards": rewards_list,
     }
 
-    log_step(
-        {
-            "event": "episode_end",
-            "task": task,
-            "score": score,
-            "steps_taken": episode_result["steps_taken"],
-            "false_positives": episode_result["false_positives"],
-            "root_cause_id": root_cause_id,
-            "root_cause_layer": root_cause_layer,
-            "breakdown": breakdown,
-        }
-    )
+    # Emit spec-required [END] line for this episode
+    log_end(success, step_num, score, rewards_list)
 
     return episode_result
 
@@ -482,14 +503,16 @@ def main():
     else:
         tasks = ["easy", "medium", "hard", "extreme"]
 
-    log_start(tasks)
-
     results = []
     for t in tasks:
+        # Each episode emits its own [START] ... [STEP]... [END] block
         results.append(run_episode(t))
 
-    average_score = round(sum(result["score"] for result in results) / len(results), 4) if results else 0.0
-    log_end({"results": results, "average_score": average_score, "model": MODEL_NAME})
+    average_score = round(sum(r["score"] for r in results) / len(results), 4) if results else 0.0
+    print(
+        f"[DEBUG] all_tasks_done average_score={average_score:.4f} model={MODEL_NAME}",
+        file=sys.stderr,
+    )
     return average_score
 
 

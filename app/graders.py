@@ -11,7 +11,7 @@ Scoring formula (v2 — with intelligence signals):
     exploration_reward  = [0.0, 0.25] bonus for checking unique, information-rich nodes
     redundancy_penalty  = [0.0, 0.3]  penalty for repeating same nodes / action cycles
     final = clamp(
-        base * efficiency_mult
+        efficiency_mult
         + speed_bonus * 0.2
         + exploration_reward
         - fp_penalty
@@ -203,6 +203,7 @@ def grade_episode(
     # + exploration      →  intelligent traversal
     # - fp penalty       →  wrong restarts/diagnoses
     # - redundancy       →  repetitive actions
+    # f1_score is in breakdown for reporting only; it does not affect the final score
     raw = (
         efficiency
         + speed_bonus * 0.2

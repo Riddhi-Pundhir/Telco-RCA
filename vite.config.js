@@ -26,6 +26,7 @@ export default defineConfig(({ command }) => ({
       "/step": "http://127.0.0.1:7860",
       "/state": "http://127.0.0.1:7860",
       "/grade": "http://127.0.0.1:7860",
+      "/trajectory": "http://127.0.0.1:7860",
     },
   },
 }));

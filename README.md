@@ -60,6 +60,11 @@ The exact structured benchmark excerpt is archived in [`artifacts/baseline_snaps
 | `hard` | 13 | 1.00 | Correct diagnosis and repair |
 | `extreme` | 17 | 1.00 | Worst-case tier solved under heavy noise |
 
+> **Note on easy scores:** The low score on `easy` reflects grading efficiency, not failure.
+> The agent succeeded but used more steps and had false positives, which the grader penalises.
+> A perfect easy run (fast, zero false positives) scores close to 1.0 — the tier is intentionally
+> unforgiving to reward precise, confident agents over brute-force exploration.
+
 That is the kind of result that makes the environment feel benchmark-ready, not just visually polished.
 
 ## What makes it a strong benchmark

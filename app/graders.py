@@ -175,13 +175,21 @@ def grade_episode(
             "breakdown": {
                 "base": 0.0,
                 "f1_score": 0.0,
-                "efficiency": 0.0,
+                "efficiency_mult": 0.0,
                 "speed_bonus": 0.0,
-                "fp_penalty": min(0.8, false_positives * 0.15),
-                "exploration_reward": exploration_reward,
-                "redundancy_penalty": redundancy_penalty,
+                "fp_penalty": round(min(0.8, false_positives * 0.15), 4),
+                "exploration_reward": round(exploration_reward, 4),
+                "redundancy_penalty": round(redundancy_penalty, 4),
                 "precision": 0.0,
                 "recall": 0.0,
+                "steps_used": steps_taken,
+                "max_steps": cfg.max_steps,
+                "elapsed_seconds": round(elapsed_seconds, 2),
+                "unique_nodes_checked": len(set(checked_nodes)) if checked_nodes else 0,
+                "unique_layers_checked": len(set(checked_layers)) if checked_layers else 0,
+                "duplicate_actions": sum(
+                    max(0, c - 1) for c in _action_pair_counts(action_log or []).values()
+                ),
             },
         }
 

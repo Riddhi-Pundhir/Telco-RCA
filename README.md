@@ -25,7 +25,9 @@ app_port: 7860
   <img src="https://img.shields.io/badge/OpenEnv-validated-success?style=for-the-badge" alt="OpenEnv">
 </p>
 
-> Telco-RCA turns a telecom outage into a reasoning problem. Each episode drops an agent into a layered 5G network where one hidden failure fans out into alarms, misleading signals, and cascading symptoms. The agent must inspect the graph, narrow the blast radius, and repair the right node with as few mistakes as possible.
+> We built a telecom outage simulator where AI agents don’t just predict failures — they investigate, reason, and fix them like real network engineers.
+>
+> Every episode turns a hidden network fault into an interactive graph-reasoning incident with noisy alarms, typed actions, and an explainable trajectory.
 
 ## Why this environment exists
 
@@ -47,6 +49,18 @@ Telco-RCA models that workflow in a way that is useful for:
 - Trajectory replay with path history, reward breakdown, and heatmap data
 - Dockerized deployment for local use and Hugging Face Spaces
 
+## One result worth showing
+
+| Snapshot | Value |
+|:---|:---|
+| Extreme tier | 1000 nodes |
+| Noise | 60% |
+| Baseline mean score | 0.9980 |
+| Successful runs | 8/8 |
+| Mean MTTR | 26.19s |
+
+That is the kind of result that makes the environment feel benchmark-ready, not just visually polished.
+
 ## What makes it a strong benchmark
 
 - Real-world utility: it models a telecom network operations workflow, not a toy game
@@ -55,17 +69,17 @@ Telco-RCA models that workflow in a way that is useful for:
 - Feedback quality: step rewards, terminal scores, and trajectory logs all tell part of the story
 - Deployment readiness: it runs locally, in Docker, and on Hugging Face Spaces with the same API surface
 
-## Episode flow
+## Why this wins
 
-An episode usually feels like this:
+- Not a classifier -> interactive decision system
+- Not static -> agent learns through environment interaction
+- Not black-box -> trajectory, reward breakdown, and heatmap explain the run
+- Not a toy -> telecom operators recognize the workflow and the failure cascade
+- Not single-shot -> every step belongs to a recoverable incident story
 
-1. The agent sees a storm of alarms and a compressed graph of the incident.
-2. It starts with cheap, informative actions such as `CHECK_LOGS` or `CHECK_VOLTAGE`.
-3. If the path looks suspicious, it traces upstream dependencies to find where the cascade began.
-4. It commits to a restart or diagnosis only after the graph evidence is strong enough.
-5. The trajectory panel shows the route taken, the reward earned, and the nodes that were inspected along the way.
+## One visual that explains everything
 
-## Incident story
+Graph + failure cascade + agent path, all in one glance.
 
 <p align="center">
   <img src="assets/readme-cascade.png" alt="Telco-RCA incident cascade figure" width="100%">
@@ -77,6 +91,21 @@ The environment simulates a layered network where a single root fault can trigge
 - deeper dependency trees
 - more noise and false alarms
 - stricter pressure on recovery time
+
+Judges should understand the story in about five seconds:
+
+- one hidden fault
+- one expanding cascade
+- one agent path through the graph
+- one repaired root cause at the end
+
+## System architecture
+
+<p align="center">
+  <img src="assets/readme-architecture.png" alt="Telco-RCA system architecture" width="100%">
+</p>
+
+Agent -> API -> Environment -> Graph -> UI
 
 ## Task tiers
 
@@ -139,6 +168,19 @@ Telco-RCA includes a trajectory endpoint and dashboard panel that show how the a
 - replay scrubber for stepping through the episode
 
 This is useful when you want to understand not just whether an agent succeeded, but how it reasoned.
+
+## Demo flow
+
+When you present the demo, it should feel like this:
+
+1. "Here’s the outage"
+2. "Look at the chaos"
+3. "Watch the agent think"
+4. "Boom — root cause found"
+
+<p align="center">
+  <img src="assets/readme-demo.gif" alt="Telco-RCA demo replay gif" width="100%">
+</p>
 
 ## Quick start
 

@@ -115,7 +115,7 @@ HIGHEST-layer node that is actually broken. Downstream alarms are just symptoms.
 6. Use DIAGNOSE when fairly confident, RESTART only when very certain.
 7. Be EFFICIENT — minimize wasted steps. Every false restart is heavily penalized.
 
-## Important — Alarm Noise (40% of alarms are false):
+## Important — Alarm Noise (varies by difficulty: easy=0%, medium=20%, hard=40%, extreme=60%):
 Some alarms are noise injected to mislead you. Signs of noise alarms:
 - Alarm on a leaf node (TOWER_) when its parent (RC_) shows no fault
 - Alarm severity doesn't match the node's actual voltage/status readings
@@ -256,7 +256,7 @@ def _heuristic_fallback(obs: dict, history: list[dict]) -> dict:
 
 
 # Fixed seeds for reproducible baseline runs
-TASK_SEEDS = {"easy": 42, "medium": 43, "hard": 44, "extreme": 45}
+TASK_SEEDS = {"easy": 42, "medium": 1042, "hard": 2042, "extreme": 3042}
 DEFAULT_TASK_MAX_STEPS = {"easy": 15, "medium": 30, "hard": 50, "extreme": 75}
 _TASK_CATALOG_CACHE: dict[str, dict] | None = None
 
@@ -406,8 +406,10 @@ def run_episode(task: str) -> dict:
             except Exception:
                 internal_state = None
 
-        root_cause_id = env_state.get("root_cause_id") or (
-            internal_state.get("root_cause_id") if internal_state else None
+        root_cause_id = (
+            env_state.get("root_cause_id")
+            or (internal_state.get("root_cause_id") if internal_state else None)
+            or info.get("root_cause_id")
         )
         root_cause_layer = (
             env_state.get("root_cause_layer")

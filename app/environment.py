@@ -1309,6 +1309,8 @@ class TelcoRCAEnvironment:
     def _handle_diagnose(self, node_id: str) -> tuple[float, dict]:
         """DIAGNOSE: Declare root cause without restarting (safer, less reward)."""
         s = self._state
+        if node_id not in s.nodes:
+            return -0.05, {"error": f"Node {node_id} not found in topology"}
         s.diagnosed_nodes.add(node_id)
 
         if node_id == s.root_cause_id:

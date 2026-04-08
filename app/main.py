@@ -222,7 +222,9 @@ def list_tasks():
 
 
 @app.post("/reset")
-def reset(req: ResetRequest):
+def reset(req: ResetRequest = None):
+    if req is None:
+        req = ResetRequest()
     if req.task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{req.task}'. Valid: {list(TASK_CONFIGS)}")
     env = _get_env(req.task)

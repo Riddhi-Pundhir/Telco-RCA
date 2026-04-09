@@ -104,7 +104,7 @@ reward:
 
 grading:
   formula: >
-    score = clamp(efficiency_mult + speed_bonus × 0.2 − fp_penalty, 0, 1)
+    score = clamp(efficiency_mult + speed_bonus × 0.2 − fp_penalty, 0.001, 0.999)
     efficiency_mult = 1 − (steps_taken / max_steps)
     speed_bonus     = max(0, 1 − elapsed_seconds / 300)
     fp_penalty      = false_positives × 0.15 (capped at 0.8)

@@ -349,7 +349,7 @@ class TestGraders:
                 "false_positives": 0,
                 "elapsed_seconds": 10,
             })
-            assert 0.0 <= score <= 1.0, f"Score out of range: {score}"
+            assert 0.0 < score < 1.0, f"Score out of range: {score}"
 
     def test_zero_score_on_failure(self):
         score = grade_easy({
@@ -359,7 +359,7 @@ class TestGraders:
             "false_positives": 3,
             "elapsed_seconds": 300,
         })
-        assert score == 0.0
+        assert 0.0 < score < 0.01
 
     def test_better_score_fewer_steps(self):
         fast = grade_medium({

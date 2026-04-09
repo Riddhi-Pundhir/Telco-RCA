@@ -414,7 +414,7 @@ def run_episode(task: str) -> dict:
             "elapsed_seconds": round(time.time() - start_time, 2),
         }
     )
-    score = 0.0
+    score = 1e-6
     breakdown = {}
     try:
         env_state = _get(f"/state?task={task}")
@@ -455,11 +455,11 @@ def run_episode(task: str) -> dict:
             "action_log": env_state.get("action_log", []),
         }
         grade_resp = _post("/grade", {"task": task, "trajectory": trajectory})
-        score = grade_resp.get("score", 0.0)
+        score = grade_resp.get("score", 1e-6)
         breakdown = grade_resp.get("breakdown", {})
     except Exception as e:
         print(f"[DEBUG] Failed to grade: {e}", file=sys.stderr)
-        score = 0.0
+        score = 1e-6
         breakdown = {}
         root_cause_id = None
         root_cause_layer = None

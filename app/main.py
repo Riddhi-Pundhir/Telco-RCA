@@ -14,11 +14,12 @@ Endpoints:
 
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
+from typing import Optional
 import os
 import time
 
@@ -222,9 +223,13 @@ def list_tasks():
 
 
 @app.post("/reset")
-def reset(req: ResetRequest = None):
+async def reset(req: Optional[ResetRequest] = None, request: Request = None):
     if req is None:
-        req = ResetRequest()
+        try:
+            body = await request.json()
+            req = ResetRequest(**body) if body else ResetRequest()
+        except Exception:
+            req = ResetRequest()
     if req.task not in TASK_CONFIGS:
         raise HTTPException(400, f"Unknown task '{req.task}'. Valid: {list(TASK_CONFIGS)}")
     env = _get_env(req.task)

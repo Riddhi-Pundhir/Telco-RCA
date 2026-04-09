@@ -170,7 +170,7 @@ def grade_episode(
 
     if not (root_cause_fixed or correct_diagnosis):
         return {
-            "score": 0.0,
+            "score": 1e-6,
             "reason": "Root cause not identified within episode budget.",
             "breakdown": {
                 "base": 0.0,

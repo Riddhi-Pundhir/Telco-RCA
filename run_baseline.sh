@@ -134,7 +134,7 @@ record = {
     "task": task,
     "episode_index": episode_index,
     "seed": seed,
-    "score": float(result.get("score", 0.0)),
+    "score": float(result.get("score", 0.001)),
     "mttr_seconds": float(result.get("elapsed_seconds", 0.0)),
     "steps_taken": int(result.get("steps_taken", 0)),
     "false_positives": int(result.get("false_positives", 0)),

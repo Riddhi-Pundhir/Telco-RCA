@@ -511,7 +511,7 @@ def main():
         # Each episode emits its own [START] ... [STEP]... [END] block
         results.append(run_episode(t))
 
-    average_score = round(sum(r["score"] for r in results) / len(results), 4) if results else 0.0
+    average_score = round(sum(r["score"] for r in results) / len(results), 4) if results else 0.001
     print(
         f"[DEBUG] all_tasks_done average_score={average_score:.4f} model={MODEL_NAME}",
         file=sys.stderr,

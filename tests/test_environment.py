@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.environment import TelcoRCAEnvironment
 from app.models import AgentAction, TASK_CONFIGS, NetworkNode, Alarm
-from app.graders import grade_easy, grade_medium, grade_hard, grade_episode
+from app.graders import grade_easy, grade_medium, grade_hard, grade_extreme, grade_episode
 
 
 # ================================================================== #
@@ -342,7 +342,7 @@ class TestEnvironmentStep:
 class TestGraders:
 
     def test_score_range(self):
-        for grade_fn in [grade_easy, grade_medium, grade_hard]:
+        for grade_fn in [grade_easy, grade_medium, grade_hard, grade_extreme]:
             score = grade_fn({
                 "root_cause_fixed": True,
                 "steps_taken": 5,

@@ -1,6 +1,6 @@
 """
 Graders for the Telco-RCA environment.
-Each grader returns a float in [0.0, 1.0].
+Each grader returns a float strictly within (0, 1) — never 0.0 or 1.0.
 Graders are deterministic given the same episode trajectory.
 
 Scoring formula (v2 — with intelligence signals):
@@ -136,7 +136,7 @@ def grade_episode(
     action_log: list[dict] | None = None,
 ) -> dict:
     """
-    Unified grader (v2). Returns a score in [0.0, 1.0] and a breakdown dict.
+    Unified grader (v2). Returns a score strictly in (0, 1) and a breakdown dict.
 
     The score rewards:
       - Correctness:  finding the actual root cause (F1 component)
@@ -290,6 +290,23 @@ def grade_hard(trajectory: dict) -> float:
         task_name="hard",
         root_cause_fixed=trajectory.get("root_cause_fixed", False),
         steps_taken=trajectory.get("steps_taken", 50),
+        false_positives=trajectory.get("false_positives", 0),
+        elapsed_seconds=trajectory.get("elapsed_seconds", 300),
+        correct_diagnosis=trajectory.get("correct_diagnosis", False),
+        checked_nodes=trajectory.get("checked_nodes"),
+        checked_layers=trajectory.get("checked_layers"),
+        total_nodes=trajectory.get("total_nodes", 0),
+        total_layers_alarming=trajectory.get("total_layers_alarming", 0),
+        action_log=trajectory.get("action_log"),
+    )
+    return result["score"]
+
+
+def grade_extreme(trajectory: dict) -> float:
+    result = grade_episode(
+        task_name="extreme",
+        root_cause_fixed=trajectory.get("root_cause_fixed", False),
+        steps_taken=trajectory.get("steps_taken", 75),
         false_positives=trajectory.get("false_positives", 0),
         elapsed_seconds=trajectory.get("elapsed_seconds", 300),
         correct_diagnosis=trajectory.get("correct_diagnosis", False),

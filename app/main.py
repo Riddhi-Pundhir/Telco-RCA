@@ -25,7 +25,7 @@ import time
 
 from .environment import TelcoRCAEnvironment
 from .models import AgentAction, TASK_CONFIGS
-from .graders import grade_easy, grade_medium, grade_hard, grade_episode
+from .graders import grade_easy, grade_medium, grade_hard, grade_extreme, grade_episode
 
 app = FastAPI(
     title="Telco-RCA OpenEnv",

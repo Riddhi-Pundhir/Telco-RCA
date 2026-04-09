@@ -211,7 +211,7 @@ def grade_episode(
         - fp_penalty
         - redundancy_penalty
     )
-    score = round(max(0.0, min(1.0, raw)), 4)
+    score = round(max(1e-6, min(1.0 - 1e-6, raw)), 4)
 
     return {
         "score": score,

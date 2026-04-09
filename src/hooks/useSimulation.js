@@ -30,20 +30,21 @@ function buildProjectedMetrics({ state, grade, explainability }) {
   const actualPrecision = grade?.breakdown?.precision ?? 0;
   const actualRecall = grade?.breakdown?.recall ?? 0;
   const actualF1 = grade?.breakdown?.f1_score ?? 0;
+  const solved = (grade?.breakdown?.base ?? 0) > 0;
 
   const precision =
-    grade?.score > 0
+    solved
       ? actualPrecision
       : Math.max(0.08, Math.min(0.98, liveConfidence - falsePositivePenalty + 0.15));
   const recall =
-    grade?.score > 0
+    solved
       ? actualRecall
       : Math.max(
           0.06,
           Math.min(0.98, checkedLayerCount / alarmingLayers * 0.72 + liveConfidence * 0.28),
         );
   const f1 =
-    grade?.score > 0
+    solved
       ? actualF1
       : precision + recall > 0
         ? (2 * precision * recall) / (precision + recall)

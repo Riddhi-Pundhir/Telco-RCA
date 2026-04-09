@@ -1,6 +1,6 @@
 """
 Graders for the Telco-RCA environment.
-Each grader returns a float in [0.0, 1.0].
+Each grader returns a float strictly in (0.0, 1.0).
 Graders are deterministic given the same episode trajectory.
 
 Scoring formula (v2 — with intelligence signals):
@@ -10,16 +10,26 @@ Scoring formula (v2 — with intelligence signals):
     fp_penalty          = false_positives * 0.15           — penalises wrong restarts
     exploration_reward  = [0.0, 0.25] bonus for checking unique, information-rich nodes
     redundancy_penalty  = [0.0, 0.3]  penalty for repeating same nodes / action cycles
-    final = clamp(
+    final = strict_unit_interval(clamp(
         efficiency_mult
         + speed_bonus * 0.2
         + exploration_reward
         - fp_penalty
         - redundancy_penalty,
-      0, 1)
+      0, 1))
 """
 
 from .models import TaskConfig, TASK_CONFIGS
+
+
+STRICT_SCORE_FLOOR = 0.0001
+STRICT_SCORE_CEILING = 0.9999
+
+
+def _strict_unit_interval(value: float) -> float:
+    """Round to 4 decimals, then keep the score away from the endpoints."""
+    rounded = round(value, 4)
+    return min(STRICT_SCORE_CEILING, max(STRICT_SCORE_FLOOR, rounded))
 
 
 # ------------------------------------------------------------------ #
@@ -136,7 +146,7 @@ def grade_episode(
     action_log: list[dict] | None = None,
 ) -> dict:
     """
-    Unified grader (v2). Returns a score in [0.0, 1.0] and a breakdown dict.
+    Unified grader (v2). Returns a score strictly in (0.0, 1.0) and a breakdown dict.
 
     The score rewards:
       - Correctness:  finding the actual root cause (F1 component)
@@ -149,7 +159,8 @@ def grade_episode(
     cfg: TaskConfig = TASK_CONFIGS[task_name]
 
     # ── F1-style root cause accuracy ──
-    tp = 1.0 if (root_cause_fixed or correct_diagnosis) else 0.0
+    solved = bool(root_cause_fixed or correct_diagnosis)
+    tp = 1.0 if solved else 0.0
     fp = float(false_positives)
 
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
@@ -168,9 +179,9 @@ def grade_episode(
         checked_nodes=checked_nodes or [],
     )
 
-    if not (root_cause_fixed or correct_diagnosis):
+    if not solved:
         return {
-            "score": 0.0,
+            "score": _strict_unit_interval(0.0),
             "reason": "Root cause not identified within episode budget.",
             "breakdown": {
                 "base": 0.0,
@@ -211,7 +222,8 @@ def grade_episode(
         - fp_penalty
         - redundancy_penalty
     )
-    score = round(max(0.0, min(1.0, raw)), 4)
+    # Keep the published score inside the open interval expected by downstream validators.
+    score = _strict_unit_interval(raw)
 
     return {
         "score": score,

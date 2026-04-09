@@ -13,7 +13,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.environment import TelcoRCAEnvironment
 from app.models import AgentAction, TASK_CONFIGS, NetworkNode, Alarm
-from app.graders import grade_easy, grade_medium, grade_hard, grade_episode
+from app.graders import (
+    STRICT_SCORE_CEILING,
+    STRICT_SCORE_FLOOR,
+    grade_easy,
+    grade_medium,
+    grade_hard,
+    grade_episode,
+)
 
 
 # ================================================================== #
@@ -349,9 +356,9 @@ class TestGraders:
                 "false_positives": 0,
                 "elapsed_seconds": 10,
             })
-            assert 0.0 <= score <= 1.0, f"Score out of range: {score}"
+            assert STRICT_SCORE_FLOOR <= score <= STRICT_SCORE_CEILING, f"Score out of range: {score}"
 
-    def test_zero_score_on_failure(self):
+    def test_floor_score_on_failure(self):
         score = grade_easy({
             "root_cause_fixed": False,
             "correct_diagnosis": False,
@@ -359,7 +366,7 @@ class TestGraders:
             "false_positives": 3,
             "elapsed_seconds": 300,
         })
-        assert score == 0.0
+        assert score == STRICT_SCORE_FLOOR
 
     def test_better_score_fewer_steps(self):
         fast = grade_medium({
@@ -402,6 +409,7 @@ class TestGraders:
         assert "score" in result
         assert "breakdown" in result
         assert result["score"] > 0
+        assert result["score"] < STRICT_SCORE_CEILING
         assert "f1_score" in result["breakdown"]
         assert "precision" in result["breakdown"]
         assert "recall" in result["breakdown"]
@@ -424,7 +432,7 @@ class TestGraders:
             "false_positives": 0,
             "elapsed_seconds": 0.5,
         })
-        assert score > 0.9
+        assert score == STRICT_SCORE_CEILING
 
     def test_diagnosis_also_scores(self):
         """Correct diagnosis without restart should still score."""

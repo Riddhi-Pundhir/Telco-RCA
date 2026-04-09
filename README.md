@@ -147,7 +147,7 @@ Agents receive a structured observation with:
 
 ## Reward and grading
 
-The environment gives step-level shaping, while the final grade normalizes the run into a score between `0.0` and `1.0`.
+The environment gives step-level shaping, while the final grade normalizes the run into a score strictly between `0.0` and `1.0`.
 
 Core signals:
 

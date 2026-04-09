@@ -170,7 +170,7 @@ def grade_episode(
 
     if not (root_cause_fixed or correct_diagnosis):
         return {
-            "score": 1e-6,
+            "score": 0.001,
             "reason": "Root cause not identified within episode budget.",
             "breakdown": {
                 "base": 0.0,
@@ -211,7 +211,7 @@ def grade_episode(
         - fp_penalty
         - redundancy_penalty
     )
-    score = round(max(1e-6, min(1.0 - 1e-6, raw)), 4)
+    score = round(max(0.001, min(0.999, raw)), 4)
 
     return {
         "score": score,

@@ -49,29 +49,6 @@ export function TaskSelector({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {taskCards.map((entry) => {
-              const active = entry.key === task;
-              return (
-                <button
-                  key={entry.key}
-                  type="button"
-                  onClick={() => onTaskChange(entry.key)}
-                  className={`min-w-0 max-w-full rounded-[1.35rem] border px-4 py-3 text-left transition duration-300 ${
-                    active
-                      ? "border-sand/45 bg-gradient-to-br from-sand/20 to-bronze/10 shadow-glow"
-                      : "border-cream/10 bg-black/10 hover:border-sand/20 hover:bg-cream/[0.04]"
-                  }`}
-                >
-                  <p className="soft-label">{entry.key}</p>
-                  <p className="break-anywhere mt-1 font-display text-[1.65rem] font-semibold leading-none text-cream">
-                    {entry.title}
-                  </p>
-                  <p className="clamp-2 break-anywhere mt-1 text-sm text-cream/60">{entry.description}</p>
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         <div className="flex flex-col gap-3 xl:items-end">

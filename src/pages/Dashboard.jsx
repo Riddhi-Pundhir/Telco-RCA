@@ -1,37 +1,38 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, memo } from "react";
 
 import { TaskSelector } from "@/components/TaskSelector";
 
-const AlarmPanel = lazy(() =>
+// Memoized panels to prevent unnecessary re-renders when other state changes
+const AlarmPanel = memo(lazy(() =>
   import("@/components/AlarmPanel/AlarmPanel").then((module) => ({
     default: module.AlarmPanel,
   })),
-);
-const AgentPanel = lazy(() =>
+));
+const AgentPanel = memo(lazy(() =>
   import("@/components/AgentPanel/AgentPanel").then((module) => ({
     default: module.AgentPanel,
   })),
-);
-const ExplainabilityPanel = lazy(() =>
+));
+const ExplainabilityPanel = memo(lazy(() =>
   import("@/components/ExplainabilityPanel").then((module) => ({
     default: module.ExplainabilityPanel,
   })),
-);
-const GraphPanel = lazy(() =>
+));
+const GraphPanel = memo(lazy(() =>
   import("@/components/Graph/GraphPanel").then((module) => ({
     default: module.GraphPanel,
   })),
-);
-const MetricsPanel = lazy(() =>
+));
+const MetricsPanel = memo(lazy(() =>
   import("@/components/Metrics/MetricsPanel").then((module) => ({
     default: module.MetricsPanel,
   })),
-);
-const TrajectoryPanel = lazy(() =>
+));
+const TrajectoryPanel = memo(lazy(() =>
   import("@/components/TrajectoryPanel/TrajectoryPanel").then((module) => ({
     default: module.TrajectoryPanel,
   })),
-);
+));
 
 function PanelSkeleton({ title, minHeight = "min-h-[20rem]", lines = 3 }) {
   return (
@@ -147,7 +148,7 @@ export function Dashboard({
         </Suspense>
 
         <div className="flex flex-col gap-4 xl:col-span-2">
-          <Suspense fallback={<PanelSkeleton title="Explainability Panel" minHeight="min-h-[24rem]" lines={4} />}>
+          <Suspense fallback={<PanelSkeleton title="Explainability Panel" minHeight="min-h-[14rem]" lines={3} />}>
             <ExplainabilityPanel explainability={explainability} />
           </Suspense>
           <Suspense fallback={<PanelSkeleton title="Metrics Panel" minHeight="min-h-[24rem]" lines={4} />}>

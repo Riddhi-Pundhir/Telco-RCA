@@ -1,92 +1,63 @@
-# Theory and Research Significance
+# 🔬 Theory & Causal Reasoning Research
+### **Benchmarking Autonomous Decision Integrity in Noisy 5G Environments**
 
-## 1. Problem Motivation
+---
 
-Root cause analysis in telecom systems is difficult because the alarms operators see are usually **effects**, not **causes**. A single hardware failure can trigger a large downstream cascade: a failed power unit may surface as controller instability, transport degradation, and tower-level service alarms across multiple regions.
+![Causal Reasoning Infographic](./assets/causal_theory.png)
 
-This is especially hard in 5G infrastructure because dependencies are deep, layered, and geographically distributed. Alarm streams are noisy, many alerts are transient or spurious, and the causal chain often spans multiple hops before the real source becomes clear. Telco-RCA is motivated by the need for environments that test **structured causal reasoning under uncertainty**, not just alarm classification.
+---
 
-## 2. Why This Problem is Hard
+## 🎯 1. Problem Motivation
+Root Cause Analysis (RCA) in telecom systems is difficult because the alarms operators see are usually **effects**, not **causes**. A single hardware failure can trigger a large downstream cascade: a failed power unit may surface as controller instability, transport degradation, and tower-level service alarms across multiple regions.
 
-- Requires reasoning over hierarchical graphs
-- High noise-to-signal ratio
-- Delayed causal effects
-- Partial observability with costly exploration
+Telco-RCA is motivated by the need for environments that test **structured causal reasoning under uncertainty**, not just simple alarm classification.
 
-- **Graph reasoning:** The environment is organized as a dependency graph, not an i.i.d. dataset. The agent must infer which upstream node best explains a distributed set of downstream alarms.
-- **Multi-hop dependency chains:** Failures propagate through a layered topology: Power Unit -> Core Switch -> Radio Controller -> Tower. Correct diagnosis often requires tracing across several hops rather than reacting to the loudest alarm.
-- **Noisy observations:** Many alarms are intentionally non-causal. High noise means a strong local signal may still be misleading.
-- **Partial observability:** The full cause is not revealed directly. Agents must actively inspect nodes, trace paths, and choose when to commit to a diagnosis.
-- **Sequential decision cost:** Every unnecessary action increases MTTR and operational risk. In real networks, false positives waste engineering effort and delay restoration.
+---
 
-The central difficulty is recovering a hidden causal explanation from sparse local evidence while navigating a large structured search space.
+## 🌋 2. Why This Problem is Hard
+Telecom maintenance faces four critical challenges that this project simulates:
 
-## 3. Limitations of Existing Approaches
+1. **Hierarchy Graphs**: Reasoning must happen over layers (Power → Core → Tower), not flat datasets.
+2. **Noise-to-Signal Ratio**: High noise means local signals frequently mislead.
+3. **Delayed Effects**: Causal effects often manifest seconds or minutes after the initial fault.
+4. **Partial Observability**: The core cause is hidden; agents must choose actions to reveal it.
 
-- **Rule-based alarm correlation systems** are often brittle. They work when failure patterns match hand-written templates, but degrade when topologies evolve, noise rises, or failure signatures overlap.
-- **Static monitoring dashboards** provide visibility, not adaptive reasoning. They help operators inspect data, but they do not solve the exploration problem.
-- **Large language models** can summarize logs well, but they often struggle with stable multi-step reasoning over large graphs.
-- **Common RL benchmarks** such as gridworlds, Atari, or simple control tasks do not capture industrial causal structure, alarm ambiguity, or graph-based exploration under operational constraints.
+---
 
-## 4. Our Approach
+## 🧪 3. Our Approach: Interactive Graph Reasoning
+Telco-RCA frames debugging as an interactive graph-reasoning environment built around a realistic 4-layer topology. On top of this structure, it adds:
 
-Telco-RCA frames telecom debugging as an interactive graph-reasoning environment built around a realistic 4-layer topology:
+- **Failure Injection**: Realistic faults at different infrastructure layers.
+- **Alarm Propagation**: High-fidelity cascading behavior.
+- **Decision Costs**: Every `CHECK_LOGS` or `TRACE_PATH` action increases MTTR, incentivizing efficiency.
 
-- Power Units
-- Core Switches
-- Radio Controllers
-- Cell Towers
+---
 
-On top of this structure, it adds:
+## 🏆 4. Scientific Novelty
+Telco-RCA bridges the gap between toy simulators and real industrial operations by combining:
+*   **Hierarchical Dependencies**
+*   **Adversarially Noisy Signals**
+*   **Exploration-based Diagnosis** (Sequential decision-making vs One-shot prediction)
 
-- **Failure injection** at different infrastructure layers
-- **Alarm propagation** from root cause to downstream dependents
-- **Noise injection** to simulate misleading or non-causal incidents
-- **Action-based exploration** through operations such as `CHECK_LOGS`, `CHECK_VOLTAGE`, `TRACE_PATH`, `RESTART`, and `DIAGNOSE`
+---
 
-This makes the benchmark suitable for **RL agents**, **GNN-based models**, and **hybrid systems** that combine graph structure with sequential decision-making. The key innovation is that the agent must **interact with the environment to uncover causality**.
+## 🌍 5. Real-World Relevance
+In real 5G Network Operations Centers (NOC), human teams must manage "Alarm Storms." This project mirrors that workflow, capturing the practical tension between speed and correctness:
+- Recover infrastructure quickly (MTTR).
+- Avoid "False Dispatches" (sending engineers to the wrong tower).
+- Isolate symptoms from genuine root causes.
 
-## 5. Why This is Novel
+---
 
-Telco-RCA is not a toy simulator and not a generic monitoring dashboard. It is a benchmark designed around the structure of real telecom failure analysis.
+## 📈 6. Benchmark Potential
+The platform allows rigorous comparison across different agent classes:
+- **Heuristic-based agents** (Traditional rules)
+- **GNN-based models** (Spatial reasoning)
+- **LLM-based agents** (Causal log parsing)
 
-Its novelty comes from combining:
+---
 
-- hierarchical infrastructure dependencies
-- realistic cascading alarm behavior
-- noisy and adversarially confusing signals
-- decision-based exploration instead of one-shot prediction
-
-This bridges the gap between synthetic RL environments and real-world industrial systems.
-
-## 6. Real-World Relevance
-
-In real 5G operations, Network Operations Center teams routinely face alarm storms during outages. A single upstream failure can create dozens or hundreds of alerts across radio, transport, and access layers. Human operators must inspect logs, correlate dependencies, and decide where to send repair crews.
-
-Telco-RCA mirrors this workflow in a controlled environment. It captures the practical tension between speed and correctness:
-
-- recover quickly
-- avoid false dispatches
-- reason over infrastructure dependencies
-- separate symptom alarms from root cause alarms
-
-That makes it a credible testbed for AI-assisted outage management.
-
-## 7. Benchmark Potential
-
-- Topology size scales from 100-node to 1000-node settings
-- Difficulty scales from `easy` to `extreme`
-- Performance is evaluated with operationally meaningful metrics such as MTTR, false positives, and action efficiency
-
-This enables rigorous comparisons across agent classes. A method that performs well here must balance exploration, causal inference, and decision precision.
-
-## 8. Future Extensions
-
-Several extensions could make the environment even closer to production-grade benchmarking:
-
-- multi-root failures instead of a single hidden cause
-- temporal graphs with evolving topology and alarm timing
-- probabilistic causality rather than deterministic propagation
-- integration with real telemetry, fault logs, or OSS/BSS traces
-
-These extensions would push Telco-RCA further toward a research benchmark for intelligent operations in complex networked systems.
+## 🔭 7. Future Extensions
+- **Multi-Root Failures**: Handling overlapping, simultaneous outages.
+- **Temporal Graphs**: Evolving topology and dynamic alarm timing.
+- **Probabilistic Causality**: Moving from deterministic propagation to stochastic models.
